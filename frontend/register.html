@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Registrar</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Registrar</h2>
+    <form id="regForm">
+      <input type="text" id="username" placeholder="Usuário" required/>
+      <input type="password" id="password" placeholder="Senha" required/>
+      <button type="submit">Criar Conta</button>
+    </form>
+    <p>Já tem conta? <a href="/login">Entrar</a></p>
+  </div>
+  <script>
+    document.getElementById('regForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: e.target.username.value,
+          password: e.target.password.value
+        })
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        window.location.href = '/chat';
+      } else {
+        alert(data.msg || 'Erro no registro');
+      }
+    });
+  </script>
+</body>
+</html>
