@@ -1,45 +1,29 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registro</title>
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-  <form id="registerForm" class="bg-white p-6 rounded shadow-md w-96 space-y-4">
-    <h2 class="text-xl font-bold text-center">Criar Conta</h2>
-    <input type="text" id="username" placeholder="Usuário" required class="w-full border px-3 py-2 rounded" />
-    <input type="password" id="password" placeholder="Senha" required class="w-full border px-3 py-2 rounded" />
-    <button type="submit" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Registrar</button>
-    <p class="text-center text-sm">Já tem conta? <a href="login.html" class="text-blue-500">Entrar</a></p>
-  </form>
-
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Registrar</title><link rel="stylesheet" href="css/style.css"/></head>
+<body>
+  <div class="form-container">
+    <h2>Registrar</h2>
+    <form id="registerForm">
+      <input id="username" placeholder="Usuário" required />
+      <input id="password" type="password" placeholder="Senha" required />
+      <button>Registrar</button>
+    </form>
+    <p>Já tem conta? <a href="login.html">Entrar</a></p>
+  </div>
   <script>
-    const backendURL = 'https://whatsapp-clone-oz95.onrender.com';
-
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    const API = '';
+    document.getElementById('registerForm').onsubmit = async e=>{
       e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-
-      try {
-        const res = await fetch(`${backendURL}/api/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-
-        if (!res.ok) throw new Error('Erro ao registrar');
-
-        const data = await res.json();
-        localStorage.setItem('token', data.token);
-        window.location.href = 'chat.html';
-      } catch (err) {
-        alert('Erro ao criar conta. Tente outro nome de usuário.');
-        console.error(err);
-      }
-    });
+      const res = await fetch(`${API}/api/auth/register`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({username:e.target.username.value,password:e.target.password.value})
+      });
+      if(!res.ok){alert((await res.json()).message);return;}
+      localStorage.setItem('token',(await res.json()).token);
+      location.href='chat.html';
+    }
   </script>
 </body>
 </html>
