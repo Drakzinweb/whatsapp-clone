@@ -10,74 +10,75 @@ const authRoutes = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 
-// Configura o CORS para permitir apenas seu frontend da Netlify
-app.use(cors({
-  origin: 'https://techchaat.netlify.app',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// 1) Configura CORS para seu domínio e preflight OPTIONS
+const corsOptions = {
+  origin: 'https://techchaat.netlify.app', // seu front no Netlify
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // responde OPTIONS para todas as rotas
 
+// 2) Middleware de JSON
 app.use(express.json());
+
+// 3) Rotas da API
 app.use('/api/auth', authRoutes);
 
-// MongoDB
-mongoose.connect(process.env.MONGO_URI)
+// 4) Conexão com MongoDB
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB conectado'))
-  .catch((err) => console.error('Erro ao conectar no MongoDB:', err));
+  .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
 
-// WebSocket
+// 5) Configuração do Socket.IO
 const io = new Server(server, {
   cors: {
     origin: 'https://techchaat.netlify.app',
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   }
 });
 
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('Token não fornecido'));
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.userId = decoded.id;
     next();
-  } catch (err) {
+  } catch {
     next(new Error('Token inválido'));
   }
 });
 
 const messages = {};
-
-io.on('connection', (socket) => {
-  console.log(`Usuário conectado: ${socket.userId}`);
+io.on('connection', socket => {
+  console.log(`🔌 Usuário conectado: ${socket.userId}`);
 
   socket.on('join', ({ to }) => {
     const room = [socket.userId, to].sort().join('_');
     socket.join(room);
-    if (messages[room]) {
-      socket.emit('history', messages[room]);
-    }
+    if (messages[room]) socket.emit('history', messages[room]);
   });
 
   socket.on('message', ({ to, text }) => {
     const room = [socket.userId, to].sort().join('_');
     const msg = { from: socket.userId, to, text, timestamp: new Date() };
-    if (!messages[room]) messages[room] = [];
+    messages[room] = messages[room] || [];
     messages[room].push(msg);
     io.to(room).emit('message', msg);
   });
 
   socket.on('disconnect', () => {
-    console.log(`Usuário desconectado: ${socket.userId}`);
+    console.log(`❌ Usuário desconectado: ${socket.userId}`);
   });
 });
 
-// Rota raiz opcional
-app.get('/', (req, res) => {
-  res.send('🚀 API do chat está online!');
-});
+// 6) Rota raiz para verificar se o servidor está online
+app.get('/', (req, res) => res.send('🚀 API do chat está online!'));
 
+// 7) Iniciar servidor
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
