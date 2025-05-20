@@ -10,17 +10,11 @@ const authRoutes = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 
-// 1) Configura CORS para seu domínio e preflight OPTIONS
-const corsOptions = {
-  origin: 'https://techchaat.netlify.app', // seu front no Netlify
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // responde OPTIONS para todas as rotas
+// 1) Habilita CORS para TODAS as origens e responde OPTIONS
+app.use(cors());               // permite qualquer origem por padrão
+app.options('*', cors());      // responde preflight para todas rotas
 
-// 2) Middleware de JSON
+// 2) Body parser
 app.use(express.json());
 
 // 3) Rotas da API
@@ -32,12 +26,11 @@ mongoose
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
 
-// 5) Configuração do Socket.IO
+// 5) Socket.IO (também sem restrição CORS)
 const io = new Server(server, {
   cors: {
-    origin: 'https://techchaat.netlify.app',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    origin: '*',
+    methods: ['GET','POST']
   }
 });
 
@@ -76,9 +69,8 @@ io.on('connection', socket => {
   });
 });
 
-// 6) Rota raiz para verificar se o servidor está online
+// 6) Rota raiz para teste
 app.get('/', (req, res) => res.send('🚀 API do chat está online!'));
 
-// 7) Iniciar servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
