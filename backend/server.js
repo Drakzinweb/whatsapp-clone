@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
@@ -9,31 +10,34 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
-
-// Socket.IO com CORS configurado
 const io = new Server(server, {
   cors: {
-    origin: 'https://techchaat.netlify.app', // Seu frontend na Netlify
-    methods: ['GET', 'POST']
-  }
+    origin: '*',  // Ajuste conforme segurança (ex: seu frontend URL)
+  },
 });
 
 // Middleware
-app.use(cors({
-  origin: 'https://techchaat.netlify.app'
-}));
+app.use(cors());
 app.use(express.json());
+
+// Servir arquivos estáticos da pasta frontend
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
+
+// Rotas da API
 app.use('/api/auth', authRoutes);
 
-// Conectar ao MongoDB
-mongoose.connect(process.env.MONGO_URI)
+// Rota padrão para /
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'login.html'));
+});
+
+// Conexão com MongoDB
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB conectado'))
-  .catch(err => console.error('Erro MongoDB:', err));
+  .catch((err) => console.error('Erro ao conectar no MongoDB:', err));
 
-// SOCKET.IO AUTENTICAÇÃO E MENSAGEM
-const messages = {};
-let onlineUsers = [];
-
+// Socket.IO — autenticação via token JWT no handshake
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('Token não fornecido'));
@@ -47,29 +51,28 @@ io.use((socket, next) => {
   }
 });
 
+const messages = {}; // Mensagens em memória (troque por DB se quiser persistência)
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
-  const userId = socket.userId;
-  console.log(`✅ Usuário conectado: ${userId}`);
+  console.log(`Usuário conectado: ${socket.userId}`);
+  onlineUsers.set(socket.userId, socket.id);
 
-  // Adicionar usuário à lista online
-  if (!onlineUsers.includes(userId)) {
-    onlineUsers.push(userId);
-    io.emit('online_users', onlineUsers);
-  }
+  // Emitir lista de usuários online para todos
+  io.emit('onlineUsers', Array.from(onlineUsers.keys()));
 
-  // Entrar na sala de conversa
   socket.on('join', ({ to }) => {
-    const room = [userId, to].sort().join('_');
+    const room = [socket.userId, to].sort().join('_');
     socket.join(room);
+
     if (messages[room]) {
       socket.emit('history', messages[room]);
     }
   });
 
-  // Enviar mensagem
   socket.on('message', ({ to, text }) => {
-    const room = [userId, to].sort().join('_');
-    const msg = { from: userId, to, text, timestamp: new Date() };
+    const room = [socket.userId, to].sort().join('_');
+    const msg = { from: socket.userId, to, text, timestamp: new Date() };
 
     if (!messages[room]) messages[room] = [];
     messages[room].push(msg);
@@ -77,17 +80,11 @@ io.on('connection', (socket) => {
     io.to(room).emit('message', msg);
   });
 
-  // Desconectar
   socket.on('disconnect', () => {
-    onlineUsers = onlineUsers.filter(id => id !== userId);
-    io.emit('online_users', onlineUsers);
-    console.log(`❌ Usuário desconectado: ${userId}`);
+    console.log(`Usuário desconectado: ${socket.userId}`);
+    onlineUsers.delete(socket.userId);
+    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
   });
-});
-
-// Status
-app.get('/', (req, res) => {
-  res.send('✅ API do WhatsApp Clone está online!');
 });
 
 // Iniciar servidor
