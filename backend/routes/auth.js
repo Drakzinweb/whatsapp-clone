@@ -1,11 +1,10 @@
-// backend/routes/auth.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
 const router = express.Router();
 
+// Registro
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -16,11 +15,12 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token });
   } catch (err) {
-    console.error('Erro ao registrar:', err);
+    console.error(err);
     res.status(500).json({ message: 'Erro no servidor' });
   }
 });
 
+// Login
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -31,16 +31,17 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
-    console.error('Erro ao fazer login:', err);
+    console.error(err);
     res.status(500).json({ message: 'Erro no servidor' });
   }
 });
 
+// Lista usuários
 router.get('/users', async (req, res) => {
   try {
     const users = await User.find().select('-password');
     res.json(users);
-  } catch (err) {
+  } catch {
     res.status(500).json({ message: 'Erro ao buscar usuários' });
   }
 });

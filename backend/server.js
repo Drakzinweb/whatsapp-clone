@@ -1,93 +1,70 @@
-// backend/server.js
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const http = require('http');
-const mongoose = require('mongoose');
+const connectDB = require('./config/db');
+const authRoutes = require('./routes/auth');
+const authMiddleware = require('./middleware/authMiddleware');
+const Message = require('./models/Message');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
-const authRoutes = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
 
-// ─── 1) CORS MANUAL PARA TODAS AS ROTAS ──────────────────────────
-app.use((req, res, next) => {
-  // Permite qualquer origem (para teste). Depois pode restringir ao seu domínio.
-  res.header('Access-Control-Allow-Origin', '*');
-  // Métodos permitidos
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  // Cabeçalhos permitidos
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  // Se for preflight, retorna imediatamente com sucesso
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
+// Conecta ao MongoDB
+connectDB();
 
-// ─── 2) BODY PARSER ──────────────────────────────────────────────
+// Parser e Rotas API
 app.use(express.json());
-
-// ─── 3) ROTAS DA API ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 
-// ─── 4) CONEXÃO COM MONGO ────────────────────────────────────────
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(() => console.log('✅ MongoDB conectado'))
-  .catch(err => console.error('❌ Erro ao conectar MongoDB:', err));
+// Serve frontend estático
+const frontendPath = path.join(__dirname, '../frontend');
+app.use(express.static(frontendPath));
+app.get('/',       (req,res) => res.sendFile(path.join(frontendPath,'index.html')));
+app.get('/login',  (req,res) => res.sendFile(path.join(frontendPath,'login.html')));
+app.get('/register',(req,res) => res.sendFile(path.join(frontendPath,'register.html')));
+app.get('/chat',   authMiddleware, (req,res) => res.sendFile(path.join(frontendPath,'chat.html')));
 
-// ─── 5) SOCKET.IO (SEM RESTRIÇÃO CORS) ────────────────────────────
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS']
-  }
-});
+// Socket.IO
+const io = new Server(server);
+const online = new Map();
 
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('Token não fornecido'));
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id;
+    const { id } = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = id;
     next();
   } catch {
     next(new Error('Token inválido'));
   }
 });
 
-const messages = {};
 io.on('connection', socket => {
-  console.log(`🔌 Usuário conectado: ${socket.userId}`);
-
-  socket.on('join', ({ to }) => {
-    const room = [socket.userId, to].sort().join('_');
-    socket.join(room);
-    if (messages[room]) {
-      socket.emit('history', messages[room]);
-    }
+  online.set(socket.userId, socket.id);
+  socket.on('join', async ({ to }) => {
+    const history = await Message.find({
+      $or: [
+        { from: socket.userId, to },
+        { from: to, to: socket.userId }
+      ]
+    }).sort('createdAt');
+    socket.emit('history', history);
   });
-
-  socket.on('message', ({ to, text }) => {
-    const room = [socket.userId, to].sort().join('_');
-    const msg = { from: socket.userId, to, text, timestamp: new Date() };
-    messages[room] = messages[room] || [];
-    messages[room].push(msg);
-    io.to(room).emit('message', msg);
+  socket.on('message', async ({ to, text }) => {
+    const msg = await Message.create({ from: socket.userId, to, text });
+    const target = online.get(to);
+    if (target) io.to(target).emit('message', msg);
+    socket.emit('message', msg);
   });
-
   socket.on('disconnect', () => {
-    console.log(`❌ Usuário desconectado: ${socket.userId}`);
+    online.delete(socket.userId);
   });
 });
 
-// ─── 6) ROTA RAIZ (TESTE) ────────────────────────────────────────
-app.get('/', (req, res) => res.send('🚀 API do chat está online!'));
-
-// ─── 7) INICIA O SERVIDOR ────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+// Inicia servidor
+const PORT = process.env.PORT||3000;
+server.listen(PORT, ()=>console.log(`🚀 rodando na porta ${PORT}`));
