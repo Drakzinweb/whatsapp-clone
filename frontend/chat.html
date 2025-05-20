@@ -4,83 +4,51 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <style>
-    /* Scrollbar customizada */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background-color: rgba(100, 116, 139, 0.5);
-      border-radius: 3px;
-    }
-
-    /* Animação de fadeIn */
-    .fadeIn {
-      animation: fadeIn 0.4s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://kit.fontawesome.com/SEU_TOKEN_DO_FONT_AWESOME.js" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-2">
-
-  <div class="w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-lg flex flex-col md:flex-row overflow-hidden">
-
+<body class="bg-gray-100 font-sans">
+  <div class="max-w-5xl mx-auto mt-10 p-4 bg-white shadow-lg rounded-lg flex flex-col md:flex-row h-[80vh]">
+    
     <!-- Contatos -->
-    <aside class="w-full md:w-1/3 border-r border-gray-200 overflow-y-auto p-4">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-bold text-gray-700">Contatos</h3>
-        <i class="fas fa-user-plus text-gray-500 hover:text-blue-500 cursor-pointer"></i>
-      </div>
-      <ul id="usersList" class="space-y-3">
-        <!-- Itens de usuário serão inseridos dinamicamente -->
-      </ul>
+    <aside class="w-full md:w-1/3 border-r border-gray-200 overflow-y-auto pr-4">
+      <h3 class="text-xl font-bold mb-4">Contatos</h3>
+      <ul id="usersList" class="space-y-2"></ul>
     </aside>
 
-    <!-- Caixa de chat -->
-    <section class="w-full md:w-2/3 flex flex-col">
-
-      <!-- Cabeçalho do Chat -->
-      <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-        <h4 class="text-lg font-semibold text-gray-800">
-          Chat com <span id="chatWith" class="text-blue-500">...</span>
-        </h4>
-        <div class="flex space-x-3 text-gray-500">
-          <i class="fas fa-phone-alt hover:text-blue-500 cursor-pointer"></i>
-          <i class="fas fa-video hover:text-blue-500 cursor-pointer"></i>
-          <i class="fas fa-ellipsis-v hover:text-blue-500 cursor-pointer"></i>
-        </div>
-      </div>
+    <!-- Chat -->
+    <section class="flex-1 flex flex-col pl-4">
+      <h4 class="text-lg font-semibold mb-2">
+        Chat com <span id="chatWith" class="text-blue-600">...</span>
+      </h4>
 
       <!-- Mensagens -->
-      <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-        <!-- Mensagens serão inseridas aqui -->
-      </div>
+      <div id="messages" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50 rounded-md mb-3 scroll-smooth custom-scrollbar"></div>
 
-      <!-- Formulário de envio -->
-      <form id="msgForm" class="flex items-center gap-3 p-4 border-t bg-white">
-        <button type="button">
-          <i class="far fa-smile text-xl text-gray-500 hover:text-yellow-400"></i>
-        </button>
-        <input type="text" id="msgInput" placeholder="Digite uma mensagem..." autocomplete="off" required
-               class="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm" />
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600">
-          <i class="fas fa-paper-plane"></i>
+      <!-- Envio -->
+      <form id="msgForm" class="flex gap-2">
+        <input
+          type="text"
+          id="msgInput"
+          placeholder="Digite uma mensagem..."
+          autocomplete="off"
+          required
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button
+          type="submit"
+          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+        >
+          Enviar
         </button>
       </form>
-
     </section>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Importa o Socket.IO diretamente do backend Render -->
+  <script src="https://whatsapp-clone-oz95.onrender.com/socket.io/socket.io.js"></script>
+
+  <!-- Lógica principal -->
   <script src="js/main.js"></script>
 </body>
 </html>

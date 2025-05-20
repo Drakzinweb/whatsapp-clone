@@ -1,18 +1,23 @@
+const API_BASE_URL = 'https://whatsapp-clone-oz95.onrender.com';
+
 // Conecta via Socket.IO usando token JWT
-const socket = io({ auth: { token: localStorage.getItem('token') } });
+const socket = io(API_BASE_URL, {
+  auth: { token: localStorage.getItem('token') }
+});
+
 let selectedUserId = null;
 let currentUserId = null;
 
 // Carrega lista de usuários
 async function loadUsers() {
   try {
-    const resMe = await fetch('/api/me', {
+    const resMe = await fetch(`${API_BASE_URL}/api/me`, {
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
     });
     const me = await resMe.json();
     currentUserId = me.id;
 
-    const resUsers = await fetch('/api/auth/users', {
+    const resUsers = await fetch(`${API_BASE_URL}/api/auth/users`, {
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
     });
     const users = await resUsers.json();

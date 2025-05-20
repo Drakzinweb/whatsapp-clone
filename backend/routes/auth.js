@@ -1,40 +1,74 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const protect = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth');
 
-const router = express.Router();
-
+// Registro de usuário
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
-  const exists = await User.findOne({ username });
-  if (exists) return res.status(400).json({ message: 'Usuário já existe' });
+  try {
+    const existingUser = await User.findOne({ username });
+    if (existingUser)
+      return res.status(400).json({ message: 'Usuário já existe' });
 
-  const user = await User.create({ username, password });
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.json({ token });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashedPassword });
+    await user.save();
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1d'
+    });
+
+    res.status(201).json({ token });
+  } catch (err) {
+    res.status(500).json({ message: 'Erro no servidor' });
+  }
 });
 
+// Login de usuário
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username });
-  if (!user || !(await user.matchPassword(password))) {
-    return res.status(400).json({ message: 'Credenciais inválidas' });
+  try {
+    const user = await User.findOne({ username });
+    if (!user)
+      return res.status(400).json({ message: 'Usuário ou senha inválidos' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: 'Usuário ou senha inválidos' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1d'
+    });
+
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: 'Erro no servidor' });
   }
-
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.json({ token });
 });
 
-router.get('/users', protect, async (req, res) => {
-  const users = await User.find({}, '_id username');
-  res.json(users);
+// Obter informações do usuário autenticado
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Erro no servidor' });
+  }
 });
 
-router.get('/me', protect, async (req, res) => {
-  const user = await User.findById(req.user).select('-password');
-  res.json({ id: user._id, username: user.username });
+// Obter lista de usuários (exceto o usuário autenticado)
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find({ _id: { $ne: req.user.id } }).select(
+      '-password'
+    );
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Erro no servidor' });
+  }
 });
 
 module.exports = router;
