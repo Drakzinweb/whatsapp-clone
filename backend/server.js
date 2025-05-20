@@ -1,3 +1,4 @@
+// backend/server.js
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -10,23 +11,34 @@ const authRoutes = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 
-// 1) Habilita CORS para TODAS as origens e responde OPTIONS
-app.use(cors());               // permite qualquer origem por padrão
-app.options('*', cors());      // responde preflight para todas rotas
+// 1) CONFIGURA CORS GLOBALMENTE
+app.use((req, res, next) => {
+  // Permite qualquer origem (substitua '*' se quiser restringir)
+  res.header('Access-Control-Allow-Origin', '*');
+  // Métodos permitidos
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // Cabeçalhos permitidos
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Se for uma requisição OPTIONS, responde imediatamente
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
-// 2) Body parser
+// 2) PARSER DE JSON
 app.use(express.json());
 
-// 3) Rotas da API
+// 3) ROTAS DE AUTENTICAÇÃO
 app.use('/api/auth', authRoutes);
 
-// 4) Conexão com MongoDB
+// 4) CONEXÃO COM MONGODB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
 
-// 5) Socket.IO (também sem restrição CORS)
+// 5) SOCKET.IO (também sem restrição de origem)
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -69,8 +81,9 @@ io.on('connection', socket => {
   });
 });
 
-// 6) Rota raiz para teste
+// 6) ROTA RAIZ PARA TESTE
 app.get('/', (req, res) => res.send('🚀 API do chat está online!'));
 
+// 7) INICIA SERVIDOR
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
