@@ -7,12 +7,13 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',  // Ajuste conforme segurança (ex: seu frontend URL)
+    origin: '*',
   },
 });
 
@@ -20,51 +21,57 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Servir arquivos estáticos da pasta frontend
+// Servir frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
-// Rotas da API
+// Rotas
 app.use('/api/auth', authRoutes);
 
-// Rota padrão para /
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'login.html'));
 });
 
-// Conexão com MongoDB
+// MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB conectado'))
-  .catch((err) => console.error('Erro ao conectar no MongoDB:', err));
+  .catch(err => console.error('Erro ao conectar:', err));
 
-// Socket.IO — autenticação via token JWT no handshake
-io.use((socket, next) => {
+// Socket.IO Auth
+const onlineUsers = new Map(); // { userId: { socketId, username } }
+const messages = {}; // { roomId: [msg1, msg2...] }
+
+io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('Token não fornecido'));
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id;
+    const user = await User.findById(decoded.id);
+    if (!user) return next(new Error('Usuário não encontrado'));
+
+    socket.userId = user._id.toString();
+    socket.username = user.username;
     next();
   } catch (err) {
     next(new Error('Token inválido'));
   }
 });
 
-const messages = {}; // Mensagens em memória (troque por DB se quiser persistência)
-const onlineUsers = new Map();
-
 io.on('connection', (socket) => {
-  console.log(`Usuário conectado: ${socket.userId}`);
-  onlineUsers.set(socket.userId, socket.id);
+  console.log(`✅ ${socket.username} conectou`);
+  onlineUsers.set(socket.userId, { socketId: socket.id, username: socket.username });
 
-  // Emitir lista de usuários online para todos
-  io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+  // Enviar usuários online
+  const usersList = Array.from(onlineUsers.entries()).map(([id, info]) => ({
+    id,
+    username: info.username,
+  }));
+  io.emit('onlineUsers', usersList);
 
   socket.on('join', ({ to }) => {
     const room = [socket.userId, to].sort().join('_');
     socket.join(room);
-
     if (messages[room]) {
       socket.emit('history', messages[room]);
     }
@@ -72,18 +79,27 @@ io.on('connection', (socket) => {
 
   socket.on('message', ({ to, text }) => {
     const room = [socket.userId, to].sort().join('_');
-    const msg = { from: socket.userId, to, text, timestamp: new Date() };
+    const msg = {
+      from: socket.userId,
+      to,
+      text,
+      timestamp: new Date(),
+      senderName: socket.username,
+    };
 
     if (!messages[room]) messages[room] = [];
     messages[room].push(msg);
-
     io.to(room).emit('message', msg);
   });
 
   socket.on('disconnect', () => {
-    console.log(`Usuário desconectado: ${socket.userId}`);
+    console.log(`❌ ${socket.username} desconectou`);
     onlineUsers.delete(socket.userId);
-    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+    const updatedList = Array.from(onlineUsers.entries()).map(([id, info]) => ({
+      id,
+      username: info.username,
+    }));
+    io.emit('onlineUsers', updatedList);
   });
 });
 
