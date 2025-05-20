@@ -1,54 +1,73 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <script src="https://kit.fontawesome.com/SEU_TOKEN_DO_FONT_AWESOME.js" crossorigin="anonymous"></script>
+  <title>Chat - WhatsApp Clone</title>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+  <!-- Main JS -->
+  <script src="main.js" defer></script>
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+
+  <!-- Font Awesome (ícones) -->
+  <script src="https://kit.fontawesome.com/YOUR_FONT_AWESOME_KIT.js" crossorigin="anonymous"></script>
+
+  <!-- Estilo extra opcional -->
+  <style>
+    .fadeIn {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 font-sans">
-  <div class="max-w-5xl mx-auto mt-10 p-4 bg-white shadow-lg rounded-lg flex flex-col md:flex-row h-[80vh]">
+
+  <div class="flex h-screen shadow-lg rounded overflow-hidden">
     
-    <!-- Contatos -->
-    <aside class="w-full md:w-1/3 border-r border-gray-200 overflow-y-auto pr-4">
-      <h3 class="text-xl font-bold mb-4">Contatos</h3>
-      <ul id="usersList" class="space-y-2"></ul>
+    <!-- Lista de usuários -->
+    <aside class="w-1/3 bg-white p-5 border-r border-gray-200 overflow-y-auto">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Usuários</h2>
+      <ul id="usersList" class="space-y-3">
+        <!-- usuários renderizados via JS -->
+      </ul>
     </aside>
 
-    <!-- Chat -->
-    <section class="flex-1 flex flex-col pl-4">
-      <h4 class="text-lg font-semibold mb-2">
-        Chat com <span id="chatWith" class="text-blue-600">...</span>
-      </h4>
+    <!-- Área do chat -->
+    <main class="w-2/3 flex flex-col">
+
+      <!-- Cabeçalho -->
+      <div class="bg-blue-600 text-white px-6 py-4 flex items-center justify-between">
+        <span class="text-xl font-semibold">Conversando com:</span>
+        <span id="chatWith" class="text-lg font-medium">Selecione um usuário</span>
+      </div>
 
       <!-- Mensagens -->
-      <div id="messages" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50 rounded-md mb-3 scroll-smooth custom-scrollbar"></div>
+      <section id="messages" class="flex-1 p-6 space-y-3 overflow-y-auto bg-gray-50 flex flex-col">
+        <!-- mensagens renderizadas via JS -->
+      </section>
 
-      <!-- Envio -->
-      <form id="msgForm" class="flex gap-2">
-        <input
-          type="text"
-          id="msgInput"
-          placeholder="Digite uma mensagem..."
-          autocomplete="off"
-          required
-          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <button
-          type="submit"
-          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-        >
+      <!-- Formulário de envio -->
+      <form id="msgForm" class="flex border-t border-gray-300 bg-white">
+        <input id="msgInput"
+               type="text"
+               placeholder="Digite sua mensagem..."
+               class="flex-1 px-4 py-3 text-gray-800 focus:outline-none"
+               autocomplete="off" />
+        <button type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 font-semibold">
           Enviar
         </button>
       </form>
-    </section>
+    </main>
   </div>
 
-  <!-- Importa o Socket.IO diretamente do backend Render -->
-  <script src="https://whatsapp-clone-oz95.onrender.com/socket.io/socket.io.js"></script>
-
-  <!-- Lógica principal -->
-  <script src="js/main.js"></script>
 </body>
 </html>

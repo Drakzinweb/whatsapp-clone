@@ -1,77 +1,97 @@
-// backend/server.js
 require('dotenv').config();
-const path = require('path');
 const express = require('express');
 const http = require('http');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/auth');
-const authMiddleware = require('./middleware/authMiddleware'); // ajustado aqui
-const Message = require('./models/Message');
+const mongoose = require('mongoose');
+const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const server = http.createServer(app);
 
-// Conecta ao MongoDB
-connectDB();
-
-// Parser e Rotas API
-app.use(express.json());
-app.use('/api/auth', authRoutes);
-
-// Serve frontend estático
-const frontendPath = path.join(__dirname, '../frontend');
-app.use(express.static(frontendPath));
-app.get('/',       (req, res) => res.sendFile(path.join(frontendPath, 'index.html')));
-app.get('/login',  (req, res) => res.sendFile(path.join(frontendPath, 'login.html')));
-app.get('/register',(req, res) => res.sendFile(path.join(frontendPath, 'register.html')));
-app.get('/chat',   authMiddleware, (req, res) => res.sendFile(path.join(frontendPath, 'chat.html')));
-
-// Socket.IO
+// Socket.IO com CORS configurado
 const io = new Server(server, {
   cors: {
-    origin: '*', // ou seu domínio específico
+    origin: 'https://techchaat.netlify.app', // Seu frontend na Netlify
     methods: ['GET', 'POST']
   }
 });
 
+// Middleware
+app.use(cors({
+  origin: 'https://techchaat.netlify.app'
+}));
+app.use(express.json());
+app.use('/api/auth', authRoutes);
+
+// Conectar ao MongoDB
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB conectado'))
+  .catch(err => console.error('Erro MongoDB:', err));
+
+// SOCKET.IO AUTENTICAÇÃO E MENSAGEM
+const messages = {};
+let onlineUsers = [];
+
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) return next(new Error('Token não fornecido'));
+
   try {
-    const { id } = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = id;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
     next();
-  } catch {
+  } catch (err) {
     next(new Error('Token inválido'));
   }
 });
 
-io.on('connection', socket => {
-  console.log(`🔌 Usuário conectado: ${socket.userId}`);
+io.on('connection', (socket) => {
+  const userId = socket.userId;
+  console.log(`✅ Usuário conectado: ${userId}`);
 
-  socket.on('join', async ({ to }) => {
-    const history = await Message.find({
-      $or: [
-        { from: socket.userId, to },
-        { from: to, to: socket.userId }
-      ]
-    }).sort('createdAt');
-    socket.emit('history', history);
+  // Adicionar usuário à lista online
+  if (!onlineUsers.includes(userId)) {
+    onlineUsers.push(userId);
+    io.emit('online_users', onlineUsers);
+  }
+
+  // Entrar na sala de conversa
+  socket.on('join', ({ to }) => {
+    const room = [userId, to].sort().join('_');
+    socket.join(room);
+    if (messages[room]) {
+      socket.emit('history', messages[room]);
+    }
   });
 
-  socket.on('message', async ({ to, text }) => {
-    const msg = await Message.create({ from: socket.userId, to, text });
-    io.to(socket.userId).emit('message', msg);
-    io.to(to).emit('message', msg);
+  // Enviar mensagem
+  socket.on('message', ({ to, text }) => {
+    const room = [userId, to].sort().join('_');
+    const msg = { from: userId, to, text, timestamp: new Date() };
+
+    if (!messages[room]) messages[room] = [];
+    messages[room].push(msg);
+
+    io.to(room).emit('message', msg);
   });
 
+  // Desconectar
   socket.on('disconnect', () => {
-    console.log(`❌ Usuário desconectado: ${socket.userId}`);
+    onlineUsers = onlineUsers.filter(id => id !== userId);
+    io.emit('online_users', onlineUsers);
+    console.log(`❌ Usuário desconectado: ${userId}`);
   });
 });
 
-// Inicia servidor
+// Status
+app.get('/', (req, res) => {
+  res.send('✅ API do WhatsApp Clone está online!');
+});
+
+// Iniciar servidor
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+});
