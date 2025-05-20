@@ -3,7 +3,6 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
@@ -11,33 +10,41 @@ const authRoutes = require('./routes/auth');
 const app = express();
 const server = http.createServer(app);
 
-// 1) Use o middleware CORS do pacote oficial,
-//    carregado ANTES de qualquer outra rota ou middleware.
-app.use(cors({
-  origin: 'https://techchaat.netlify.app',  // seu domínio Netlify
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
-}));
+// ─── 1) CORS MANUAL PARA TODAS AS ROTAS ──────────────────────────
+app.use((req, res, next) => {
+  // Permite qualquer origem (para teste). Depois pode restringir ao seu domínio.
+  res.header('Access-Control-Allow-Origin', '*');
+  // Métodos permitidos
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // Cabeçalhos permitidos
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Se for preflight, retorna imediatamente com sucesso
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
-// 2) Responda automaticamente a todos os OPTIONS
-app.options('*', cors());
-
-// 3) JSON body parser
+// ─── 2) BODY PARSER ──────────────────────────────────────────────
 app.use(express.json());
 
-// 4) Rotas de Autenticação
+// ─── 3) ROTAS DA API ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 
-// 5) Conecta ao MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// ─── 4) CONEXÃO COM MONGO ────────────────────────────────────────
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
   .then(() => console.log('✅ MongoDB conectado'))
-  .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
+  .catch(err => console.error('❌ Erro ao conectar MongoDB:', err));
 
-// 6) Configuração do Socket.IO com CORS
+// ─── 5) SOCKET.IO (SEM RESTRIÇÃO CORS) ────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: 'https://techchaat.netlify.app',
-    methods: ['GET','POST','OPTIONS']
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS']
   }
 });
 
@@ -58,15 +65,17 @@ io.on('connection', socket => {
   console.log(`🔌 Usuário conectado: ${socket.userId}`);
 
   socket.on('join', ({ to }) => {
-    const room = [socket.userId,to].sort().join('_');
+    const room = [socket.userId, to].sort().join('_');
     socket.join(room);
-    if (messages[room]) socket.emit('history', messages[room]);
+    if (messages[room]) {
+      socket.emit('history', messages[room]);
+    }
   });
 
-  socket.on('message', ({ to,text }) => {
-    const room = [socket.userId,to].sort().join('_');
-    const msg = { from: socket.userId,to,text,timestamp: new Date() };
-    messages[room] = messages[room]||[];
+  socket.on('message', ({ to, text }) => {
+    const room = [socket.userId, to].sort().join('_');
+    const msg = { from: socket.userId, to, text, timestamp: new Date() };
+    messages[room] = messages[room] || [];
     messages[room].push(msg);
     io.to(room).emit('message', msg);
   });
@@ -76,11 +85,9 @@ io.on('connection', socket => {
   });
 });
 
-// 7) Rota raiz para teste
-app.get('/', (req, res) => {
-  res.send('🚀 API do chat está online!');
-});
+// ─── 6) ROTA RAIZ (TESTE) ────────────────────────────────────────
+app.get('/', (req, res) => res.send('🚀 API do chat está online!'));
 
-// 8) Inicia servidor HTTP+WebSocket
-const PORT = process.env.PORT||3000;
+// ─── 7) INICIA O SERVIDOR ────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
