@@ -269,473 +269,482 @@
   </div>
 
   <script>
-    // ===== Authentication check =====
-    const token    = localStorage.getItem('token');
-    const userId   = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    
-    // Se faltar algum dado de auth, redireciona
-    if (!token || !userId || !username) {
-      window.location.href = 'login.html';
-      return;  // interrompe a execução deste script
-    }
-    
-    // **AQUI** você já tem a variável `username` válida:
-    document.getElementById('currentUsername').textContent = username;
-    
-    // Logout
-    document.getElementById('logoutBtn').onclick = () => {
-      localStorage.clear();
-      window.location.href = 'login.html';
-    };
-    
-    // Settings button
-    document.getElementById('settingsBtn').onclick = () => {
-      window.location.href = 'config.html';
-    };
-    
-    // Back to contacts button (mobile)
-    document.getElementById('backToContacts').addEventListener('click', () => {
-      document.getElementById('usersListContainer').style.display = 'block';
-      document.getElementById('chatArea').style.display = 'none';
-    });
-    
-    // ===== Profile Modal =====
-    const profileModal = document.getElementById('profileModal');
-    const openProfileBtn = document.getElementById('openProfileBtn');
-    const openChatProfileBtn = document.getElementById('openChatProfileBtn');
-    const closeProfileModal = document.getElementById('closeProfileModal');
-    const blockUserBtn = document.getElementById('blockUserBtn');
-    const blockConfirmModal = document.getElementById('blockConfirmModal');
-    const cancelBlockBtn = document.getElementById('cancelBlockBtn');
-    const confirmBlockBtn = document.getElementById('confirmBlockBtn');
-    const blockConfirmText = document.getElementById('blockConfirmText');
-    const chatOptionsBtn = document.getElementById('chatOptionsBtn');
-    
-    let currentProfileUserId = null;
-    
-    // Open profile modal for current user
-    openProfileBtn.addEventListener('click', () => {
-      document.getElementById('profileUsername').textContent = username;
-      document.getElementById('profileStatus').textContent = 'Online';
-      blockUserBtn.style.display = 'none';
-      currentProfileUserId = null;
-      profileModal.classList.remove('hidden');
-    });
-    
-    // Open profile modal for chat user
-    openChatProfileBtn.addEventListener('click', () => {
-      if (currentChatUserId) {
-        document.getElementById('profileUsername').textContent = currentChatUsername;
-        document.getElementById('profileStatus').textContent = 'Online';
-        blockUserBtn.style.display = 'flex';
-        currentProfileUserId = currentChatUserId;
-        profileModal.classList.remove('hidden');
+    (async function() {
+      // ===== Authentication check =====
+      const token    = localStorage.getItem('token');
+      const userId   = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
+      
+      // Se faltar algum dado de auth, redireciona
+      if (!token || !userId || !username) {
+        window.location.href = 'login.html';
+        return;  // interrompe a execução deste script
       }
-    });
-    
-    // Chat options button
-    chatOptionsBtn.addEventListener('click', () => {
-      if (currentChatUserId) {
-        document.getElementById('profileUsername').textContent = currentChatUsername;
+      
+      // **AQUI** você já tem a variável `username` válida:
+      document.getElementById('currentUsername').textContent = username;
+      
+      // Logout
+      document.getElementById('logoutBtn').onclick = () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+      };
+      
+      // Settings button
+      document.getElementById('settingsBtn').onclick = () => {
+        window.location.href = 'config.html';
+      };
+      
+      // Back to contacts button (mobile)
+      document.getElementById('backToContacts').addEventListener('click', () => {
+        document.getElementById('usersListContainer').style.display = 'block';
+        document.getElementById('chatArea').style.display = 'none';
+      });
+      
+      // ===== Profile Modal =====
+      const profileModal = document.getElementById('profileModal');
+      const openProfileBtn = document.getElementById('openProfileBtn');
+      const openChatProfileBtn = document.getElementById('openChatProfileBtn');
+      const closeProfileModal = document.getElementById('closeProfileModal');
+      const blockUserBtn = document.getElementById('blockUserBtn');
+      const blockConfirmModal = document.getElementById('blockConfirmModal');
+      const cancelBlockBtn = document.getElementById('cancelBlockBtn');
+      const confirmBlockBtn = document.getElementById('confirmBlockBtn');
+      const blockConfirmText = document.getElementById('blockConfirmText');
+      const chatOptionsBtn = document.getElementById('chatOptionsBtn');
+      
+      let currentProfileUserId = null;
+      
+      // Open profile modal for current user
+      openProfileBtn.addEventListener('click', () => {
+        document.getElementById('profileUsername').textContent = username;
         document.getElementById('profileStatus').textContent = 'Online';
-        blockUserBtn.style.display = 'flex';
-        currentProfileUserId = currentChatUserId;
+        blockUserBtn.style.display = 'none';
+        currentProfileUserId = null;
         profileModal.classList.remove('hidden');
-      }
-    });
-    
-    // Close profile modal
-    closeProfileModal.addEventListener('click', () => {
-      profileModal.classList.add('hidden');
-    });
-    
-    // Block user button
-    blockUserBtn.addEventListener('click', () => {
-      profileModal.classList.add('hidden');
-      blockConfirmText.textContent = `Você tem certeza que deseja bloquear ${currentChatUsername}?`;
-      blockConfirmModal.classList.remove('hidden');
-    });
-    
-    // Cancel block
-    cancelBlockBtn.addEventListener('click', () => {
-      blockConfirmModal.classList.add('hidden');
-      profileModal.classList.remove('hidden');
-    });
-    
-    // Confirm block
-    confirmBlockBtn.addEventListener('click', async () => {
-      try {
-        const res = await fetch(
-          `https://whatsapp-clone-wwjc.onrender.com/api/users/${currentProfileUserId}/block`,
-          {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+      });
+      
+      // Open profile modal for chat user
+      openChatProfileBtn.addEventListener('click', () => {
+        if (currentChatUserId) {
+          document.getElementById('profileUsername').textContent = currentChatUsername;
+          document.getElementById('profileStatus').textContent = 'Online';
+          blockUserBtn.style.display = 'flex';
+          currentProfileUserId = currentChatUserId;
+          profileModal.classList.remove('hidden');
+        }
+      });
+      
+      // Chat options button
+      chatOptionsBtn.addEventListener('click', () => {
+        if (currentChatUserId) {
+          document.getElementById('profileUsername').textContent = currentChatUsername;
+          document.getElementById('profileStatus').textContent = 'Online';
+          blockUserBtn.style.display = 'flex';
+          currentProfileUserId = currentChatUserId;
+          profileModal.classList.remove('hidden');
+        }
+      });
+      
+      // Close profile modal
+      closeProfileModal.addEventListener('click', () => {
+        profileModal.classList.add('hidden');
+      });
+      
+      // Block user button
+      blockUserBtn.addEventListener('click', () => {
+        profileModal.classList.add('hidden');
+        blockConfirmText.textContent = `Você tem certeza que deseja bloquear ${currentChatUsername}?`;
+        blockConfirmModal.classList.remove('hidden');
+      });
+      
+      // Cancel block
+      cancelBlockBtn.addEventListener('click', () => {
+        blockConfirmModal.classList.add('hidden');
+        profileModal.classList.remove('hidden');
+      });
+      
+      // Confirm block
+      confirmBlockBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch(
+            `https://whatsapp-clone-wwjc.onrender.com/api/users/${currentProfileUserId}/block`,
+            {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message);
+
+          // UI updates
+          blockConfirmModal.classList.add('hidden');
+          profileModal.classList.add('hidden');
+
+          // Remove da lista
+          const blockedEl = document.querySelector(`li[data-id="${currentProfileUserId}"]`);
+          if (blockedEl) blockedEl.remove();
+
+          // Se estiver conversando, fecha chat
+          if (currentChatUserId === currentProfileUserId) {
+            currentChatUserId = null;
+            chatTitle.textContent = 'Selecione um contato';
+            messagesContainer.innerHTML = `
+              <div class="text-center text-gray-500 text-sm py-8">
+                Selecione um contato para começar a conversar
+              </div>
+            `;
+            if (window.innerWidth <= 768) {
+              usersListContainer.style.display = 'block';
+              chatArea.style.display = 'none';
             }
           }
+
+          // Notificação
+          const n = document.createElement('div');
+          n.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center';
+          n.innerHTML = `<i class="fas fa-check-circle mr-2"></i><span>${currentChatUsername} bloqueado</span>`;
+          document.body.appendChild(n);
+          setTimeout(() => { n.remove(); }, 3000);
+
+        } catch (err) {
+          alert('Erro ao bloquear: ' + err.message);
+        }
+      });
+      
+      // ===== Socket.IO connection =====
+      const socket = io('https://whatsapp-clone-wwjc.onrender.com', {
+        auth: { token },
+        path: '/socket.io',
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000
+      });
+      
+      // Tratamento de erros de conexão
+      socket.on('connect_error', (err) => {
+        console.error('Erro de conexão:', err.message);
+        
+        // Tentar reconectar antes de redirecionar
+        setTimeout(() => {
+          if (!socket.connected) {
+            alert('Não foi possível conectar ao servidor. Por favor, tente novamente.');
+            localStorage.clear();
+            window.location.href = 'login.html';
+          }
+        }, 5000);
+      });
+      
+      // Quando a conexão é estabelecida
+      socket.on('connect', () => {
+        console.log('Conectado ao servidor Socket.IO');
+        
+        // Enviar autenticação novamente após reconexão
+        socket.emit('authenticate', { token });
+      });
+      
+      // Tratamento de autenticação falha
+      socket.on('unauthorized', (err) => {
+        console.error('Autenticação falhou:', err.message);
+        alert('Sessão expirada. Por favor, faça login novamente.');
+        localStorage.clear();
+        window.location.href = 'login.html';
+      });
+      
+      // ===== UI elements =====
+      const usersList = document.getElementById('usersList');
+      const chatTitle = document.getElementById('chatTitle');
+      const messagesContainer = document.getElementById('messages');
+      const typingIndicator = document.getElementById('typingIndicator');
+      const msgForm = document.getElementById('msgForm');
+      const msgInput = document.getElementById('msgInput');
+      const searchInput = document.getElementById('searchInput');
+      const usersListContainer = document.getElementById('usersListContainer');
+      const chatArea = document.getElementById('chatArea');
+      
+      let currentChatUserId = null;
+      let currentChatUsername = null;
+      let typingTimeout;
+      let onlineUsers = [];
+      
+      // ===== Online users list =====
+      socket.on('onlineUsers', users => {
+        onlineUsers = users.filter(user => user.id !== userId);
+        renderUsersList(onlineUsers);
+        
+        // If we have a current chat user, update their status
+        if (currentChatUserId) {
+          const user = onlineUsers.find(u => u.id === currentChatUserId);
+          if (!user) {
+            // User went offline
+            document.querySelector('#chatHeader .text-xs').textContent = 'Offline';
+          } else {
+            document.querySelector('#chatHeader .text-xs').textContent = 'Online';
+          }
+        }
+      });
+      
+      // Render users list with search filtering
+      function renderUsersList(users) {
+        usersList.innerHTML = '';
+        
+        if (users.length === 0) {
+          usersList.innerHTML = `
+            <div class="p-4 text-center text-gray-500">
+              Nenhum contato online
+            </div>
+          `;
+          return;
+        }
+        
+        users.forEach(user => {
+          const li = document.createElement('li');
+          li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer transition flex items-center';
+          li.dataset.id = user.id;
+          
+          li.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">${user.username}</p>
+              <p class="text-xs text-gray-500">Online</p>
+            </div>
+            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+          `;
+          
+          li.addEventListener('click', () => selectUser(user.id, user.username, li));
+          usersList.appendChild(li);
+        });
+      }
+      
+      // Search functionality
+      searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filteredUsers = onlineUsers.filter(user => 
+          user.username.toLowerCase().includes(searchTerm)
         );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-
-        // UI updates
-        blockConfirmModal.classList.add('hidden');
-        profileModal.classList.add('hidden');
-
-        // Remove da lista
-        const blockedEl = document.querySelector(`li[data-id="${currentProfileUserId}"]`);
-        if (blockedEl) blockedEl.remove();
-
-        // Se estiver conversando, fecha chat
-        if (currentChatUserId === currentProfileUserId) {
+        renderUsersList(filteredUsers);
+      });
+      
+      // Select user for private chat
+      function selectUser(id, username, element) {
+        currentChatUserId = id;
+        currentChatUsername = username;
+        
+        // Update UI
+        Array.from(usersList.children).forEach(li => {
+          li.classList.remove('bg-gray-100');
+        });
+        
+        if (element) {
+          element.classList.add('bg-gray-100');
+        }
+        
+        chatTitle.textContent = username;
+        document.querySelector('#chatHeader .text-xs').textContent = 'Online';
+        
+        // Clear and update messages container
+        messagesContainer.innerHTML = `
+          <div class="text-center text-gray-500 text-sm py-8">
+            Carregando mensagens...
+          </div>
+        `;
+        
+        typingIndicator.textContent = '';
+        
+        // On mobile, show chat area and hide user list
+        if (window.innerWidth <= 768) {
+          usersListContainer.style.display = 'none';
+          chatArea.style.display = 'flex';
+        }
+        
+        // Join the chat room
+        socket.emit('join', { to: id });
+      }
+      
+      // ===== Message history =====
+      socket.on('history', msgs => {
+        if (msgs.length === 0) {
+          messagesContainer.innerHTML = `
+            <div class="text-center text-gray-500 text-sm py-8">
+              Nenhuma mensagem ainda. Comece a conversa!
+            </div>
+          `;
+          return;
+        }
+        
+        messagesContainer.innerHTML = '';
+        msgs.forEach(msg => appendMessage(msg));
+        scrollToBottom();
+      });
+      
+      // ===== New message received =====
+      socket.on('message', msg => {
+        if (
+          msg.from === currentChatUserId ||
+          (msg.from === userId && msg.to === currentChatUserId)
+        ) {
+          appendMessage(msg);
+          scrollToBottom();
+          
+          // Add notification sound
+          if (msg.from !== userId) {
+            playNotificationSound();
+          }
+        }
+      });
+      
+      // Play notification sound
+      function playNotificationSound() {
+        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
+        audio.volume = 0.3;
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      }
+      
+      // ===== Typing indicator =====
+      socket.on('typing', ({ from, isTyping }) => {
+        if (from === currentChatUserId) {
+          if (isTyping) {
+            typingIndicator.innerHTML = `
+              <span class="flex items-center">
+                ${currentChatUsername} está digitando
+                <span class="typing-dot ml-1"></span>
+                <span class="typing-dot ml-1"></span>
+                <span class="typing-dot ml-1"></span>
+              </span>
+            `;
+          } else {
+            typingIndicator.textContent = 'Online';
+          }
+        }
+      });
+      
+      // ===== Send message =====
+      msgForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const text = msgInput.value.trim();
+        if (!text || !currentChatUserId) return;
+        
+        socket.emit('message', { to: currentChatUserId, text });
+        msgInput.value = '';
+        socket.emit('typing', { to: currentChatUserId, isTyping: false });
+        msgInput.focus();
+      });
+      
+      // ===== Typing event emission =====
+      msgInput.addEventListener('input', () => {
+        if (!currentChatUserId) return;
+        
+        socket.emit('typing', { to: currentChatUserId, isTyping: true });
+        clearTimeout(typingTimeout);
+        
+        typingTimeout = setTimeout(() => {
+          socket.emit('typing', { to: currentChatUserId, isTyping: false });
+        }, 1000);
+      });
+      
+      // ===== Helpers =====
+      function appendMessage(msg) {
+        // Remove the loading message if it exists
+        if (messagesContainer.children.length === 1 && 
+             messagesContainer.children[0].classList.contains('text-center')) {
+          messagesContainer.innerHTML = '';
+        }
+        
+        const isSent = msg.from === userId;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `flex ${isSent ? 'justify-end' : 'justify-start'} mb-3 message-animation`;
+        
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = `max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isSent ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'}`;
+        bubbleDiv.textContent = msg.text;
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = `block text-xs mt-1 ${isSent ? 'text-indigo-200' : 'text-gray-500'}`;
+        timeSpan.textContent = formatTime(msg.timestamp || msg.createdAt);
+        
+        bubbleDiv.appendChild(timeSpan);
+        messageDiv.appendChild(bubbleDiv);
+        messagesContainer.appendChild(messageDiv);
+      }
+      
+      function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+      
+      // Focus message input when chat is selected
+      msgInput.addEventListener('focus', () => {
+        if (currentChatUserId) {
+          socket.emit('typing', { to: currentChatUserId, isTyping: true });
+        }
+      });
+      
+      msgInput.addEventListener('blur', () => {
+        if (currentChatUserId) {
+          socket.emit('typing', { to: currentChatUserId, isTyping: false });
+        }
+      });
+      
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && currentChatUserId) {
+          // Clear current chat selection
           currentChatUserId = null;
+          currentChatUsername = null;
           chatTitle.textContent = 'Selecione um contato';
           messagesContainer.innerHTML = `
             <div class="text-center text-gray-500 text-sm py-8">
               Selecione um contato para começar a conversar
             </div>
           `;
+          
+          // Remove active state from all users
+          Array.from(usersList.children).forEach(li => {
+            li.classList.remove('bg-gray-100');
+          });
+          
+          // On mobile, show user list and hide chat area
           if (window.innerWidth <= 768) {
             usersListContainer.style.display = 'block';
             chatArea.style.display = 'none';
           }
         }
-
-        // Notificação
-        const n = document.createElement('div');
-        n.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center';
-        n.innerHTML = `<i class="fas fa-check-circle mr-2"></i><span>${currentChatUsername} bloqueado</span>`;
-        document.body.appendChild(n);
-        setTimeout(() => { n.remove(); }, 3000);
-
-      } catch (err) {
-        alert('Erro ao bloquear: ' + err.message);
-      }
-    });
-    
-    // ===== Socket.IO connection =====
-    const socket = io('https://whatsapp-clone-wwjc.onrender.com', {
-      auth: { token },
-      path: '/socket.io',
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
-    });
-    
-    // Tratamento de erros de conexão
-    socket.on('connect_error', (err) => {
-      console.error('Erro de conexão:', err.message);
-      
-      // Tentar reconectar antes de redirecionar
-      setTimeout(() => {
-        if (!socket.connected) {
-          alert('Não foi possível conectar ao servidor. Por favor, tente novamente.');
-          localStorage.clear();
-          window.location.href = 'login.html';
-        }
-      }, 5000);
-    });
-    
-    // Quando a conexão é estabelecida
-    socket.on('connect', () => {
-      console.log('Conectado ao servidor Socket.IO');
-      
-      // Enviar autenticação novamente após reconexão
-      socket.emit('authenticate', { token });
-    });
-    
-    // Tratamento de autenticação falha
-    socket.on('unauthorized', (err) => {
-      console.error('Autenticação falhou:', err.message);
-      alert('Sessão expirada. Por favor, faça login novamente.');
-      localStorage.clear();
-      window.location.href = 'login.html';
-    });
-    
-    // ===== UI elements =====
-    const usersList = document.getElementById('usersList');
-    const chatTitle = document.getElementById('chatTitle');
-    const messagesContainer = document.getElementById('messages');
-    const typingIndicator = document.getElementById('typingIndicator');
-    const msgForm = document.getElementById('msgForm');
-    const msgInput = document.getElementById('msgInput');
-    const searchInput = document.getElementById('searchInput');
-    const usersListContainer = document.getElementById('usersListContainer');
-    const chatArea = document.getElementById('chatArea');
-    
-    let currentChatUserId = null;
-    let currentChatUsername = null;
-    let typingTimeout;
-    let onlineUsers = [];
-    
-    // ===== Online users list =====
-    socket.on('onlineUsers', users => {
-      onlineUsers = users.filter(user => user.id !== userId);
-      renderUsersList(onlineUsers);
-      
-      // If we have a current chat user, update their status
-      if (currentChatUserId) {
-        const user = onlineUsers.find(u => u.id === currentChatUserId);
-        if (!user) {
-          // User went offline
-          document.querySelector('#chatHeader .text-xs').textContent = 'Offline';
-        } else {
-          document.querySelector('#chatHeader .text-xs').textContent = 'Online';
-        }
-      }
-    });
-    
-    // Render users list with search filtering
-    function renderUsersList(users) {
-      usersList.innerHTML = '';
-      
-      if (users.length === 0) {
-        usersList.innerHTML = `
-          <div class="p-4 text-center text-gray-500">
-            Nenhum contato online
-          </div>
-        `;
-        return;
-      }
-      
-      users.forEach(user => {
-        const li = document.createElement('li');
-        li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer transition flex items-center';
-        li.dataset.id = user.id;
-        
-        li.innerHTML = `
-          <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
-            <i class="fas fa-user"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">${user.username}</p>
-            <p class="text-xs text-gray-500">Online</p>
-          </div>
-          <div class="w-2 h-2 rounded-full bg-green-500"></div>
-        `;
-        
-        li.addEventListener('click', () => selectUser(user.id, user.username, li));
-        usersList.appendChild(li);
-      });
-    }
-    
-    // Search functionality
-    searchInput.addEventListener('input', () => {
-      const searchTerm = searchInput.value.toLowerCase();
-      const filteredUsers = onlineUsers.filter(user => 
-        user.username.toLowerCase().includes(searchTerm)
-      );
-      renderUsersList(filteredUsers);
-    });
-    
-    // Select user for private chat
-    function selectUser(id, username, element) {
-      currentChatUserId = id;
-      currentChatUsername = username;
-      
-      // Update UI
-      Array.from(usersList.children).forEach(li => {
-        li.classList.remove('bg-gray-100');
       });
       
-      if (element) {
-        element.classList.add('bg-gray-100');
-      }
-      
-      chatTitle.textContent = username;
-      document.querySelector('#chatHeader .text-xs').textContent = 'Online';
-      
-      // Clear and update messages container
-      messagesContainer.innerHTML = `
-        <div class="text-center text-gray-500 text-sm py-8">
-          Carregando mensagens...
-        </div>
-      `;
-      
-      typingIndicator.textContent = '';
-      
-      // On mobile, show chat area and hide user list
-      if (window.innerWidth <= 768) {
-        usersListContainer.style.display = 'none';
-        chatArea.style.display = 'flex';
-      }
-      
-      // Join the chat room
-      socket.emit('join', { to: id });
-    }
-    
-    // ===== Message history =====
-    socket.on('history', msgs => {
-      if (msgs.length === 0) {
-        messagesContainer.innerHTML = `
-          <div class="text-center text-gray-500 text-sm py-8">
-            Nenhuma mensagem ainda. Comece a conversa!
-          </div>
-        `;
-        return;
-      }
-      
-      messagesContainer.innerHTML = '';
-      msgs.forEach(msg => appendMessage(msg));
-      scrollToBottom();
-    });
-    
-    // ===== New message received =====
-    socket.on('message', msg => {
-      if (
-        msg.from === currentChatUserId ||
-        (msg.from === userId && msg.to === currentChatUserId)
-      ) {
-        appendMessage(msg);
-        scrollToBottom();
-        
-        // Add notification sound
-        if (msg.from !== userId) {
-          playNotificationSound();
-        }
-      }
-    });
-    
-    // Play notification sound
-    function playNotificationSound() {
-      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(e => console.log('Audio play failed:', e));
-    }
-    
-    // ===== Typing indicator =====
-    socket.on('typing', ({ from, isTyping }) => {
-      if (from === currentChatUserId) {
-        if (isTyping) {
-          typingIndicator.innerHTML = `
-            <span class="flex items-center">
-              ${currentChatUsername} está digitando
-              <span class="typing-dot ml-1"></span>
-              <span class="typing-dot ml-1"></span>
-              <span class="typing-dot ml-1"></span>
-            </span>
-          `;
-        } else {
-          typingIndicator.textContent = 'Online';
-        }
-      }
-    });
-    
-    // ===== Send message =====
-    msgForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const text = msgInput.value.trim();
-      if (!text || !currentChatUserId) return;
-      
-      socket.emit('message', { to: currentChatUserId, text });
-      msgInput.value = '';
-      socket.emit('typing', { to: currentChatUserId, isTyping: false });
-      msgInput.focus();
-    });
-    
-    // ===== Typing event emission =====
-    msgInput.addEventListener('input', () => {
-      if (!currentChatUserId) return;
-      
-      socket.emit('typing', { to: currentChatUserId, isTyping: true });
-      clearTimeout(typingTimeout);
-      
-      typingTimeout = setTimeout(() => {
-        socket.emit('typing', { to: currentChatUserId, isTyping: false });
-      }, 1000);
-    });
-    
-    // ===== Helpers =====
-    function appendMessage(msg) {
-      // Remove the loading message if it exists
-      if (messagesContainer.children.length === 1 && 
-           messagesContainer.children[0].classList.contains('text-center')) {
-        messagesContainer.innerHTML = '';
-      }
-      
-      const isSent = msg.from === userId;
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `flex ${isSent ? 'justify-end' : 'justify-start'} mb-3 message-animation`;
-      
-      const bubbleDiv = document.createElement('div');
-      bubbleDiv.className = `max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isSent ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'}`;
-      bubbleDiv.textContent = msg.text;
-      
-      const timeSpan = document.createElement('span');
-      timeSpan.className = `block text-xs mt-1 ${isSent ? 'text-indigo-200' : 'text-gray-500'}`;
-      timeSpan.textContent = formatTime(msg.timestamp || msg.createdAt);
-      
-      bubbleDiv.appendChild(timeSpan);
-      messageDiv.appendChild(bubbleDiv);
-      messagesContainer.appendChild(messageDiv);
-    }
-    
-    function formatTime(timestamp) {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    
-    function scrollToBottom() {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    // Focus message input when chat is selected
-    msgInput.addEventListener('focus', () => {
-      if (currentChatUserId) {
-        socket.emit('typing', { to: currentChatUserId, isTyping: true });
-      }
-    });
-    
-    msgInput.addEventListener('blur', () => {
-      if (currentChatUserId) {
-        socket.emit('typing', { to: currentChatUserId, isTyping: false });
-      }
-    });
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && currentChatUserId) {
-        // Clear current chat selection
-        currentChatUserId = null;
-        currentChatUsername = null;
-        chatTitle.textContent = 'Selecione um contato';
-        messagesContainer.innerHTML = `
-          <div class="text-center text-gray-500 text-sm py-8">
-            Selecione um contato para começar a conversar
-          </div>
-        `;
-        
-        // Remove active state from all users
-        Array.from(usersList.children).forEach(li => {
-          li.classList.remove('bg-gray-100');
-        });
-        
-        // On mobile, show user list and hide chat area
-        if (window.innerWidth <= 768) {
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+          // On desktop, show both panels
+          usersListContainer.style.display = 'block';
+          chatArea.style.display = 'flex';
+        } else if (!currentChatUserId) {
+          // On mobile with no chat selected, show user list
           usersListContainer.style.display = 'block';
           chatArea.style.display = 'none';
+        } else {
+          // On mobile with chat selected, show chat
+          usersListContainer.style.display = 'none';
+          chatArea.style.display = 'flex';
         }
-      }
-    });
-    
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 768) {
-        // On desktop, show both panels
-        usersListContainer.style.display = 'block';
-        chatArea.style.display = 'flex';
-      } else if (!currentChatUserId) {
-        // On mobile with no chat selected, show user list
-        usersListContainer.style.display = 'block';
-        chatArea.style.display = 'none';
-      } else {
-        // On mobile with chat selected, show chat
-        usersListContainer.style.display = 'none';
-        chatArea.style.display = 'flex';
-      }
-    });
+      });
+
+      return {
+        socket,
+        currentChatUserId,
+        currentChatUsername,
+        onlineUsers
+      };
+    })();
   </script>
 </body>
 </html>
