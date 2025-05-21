@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configurações | Tech Chat</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-indigo-600 text-white p-4 flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Configurações</h1>
+    <button id="backBtn" class="text-white hover:text-gray-200">
+      <i class="fas fa-arrow-left"></i> Voltar
+    </button>
+  </header>
+
+  <!-- Container -->
+  <main class="flex-1 overflow-y-auto p-6">
+    <!-- Seção: Perfil -->
+    <section class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-user mr-2"></i> Meu Perfil</h2>
+      <form id="profileForm" class="space-y-4">
+        <div>
+          <label for="usernameInput" class="block text-sm font-medium text-gray-700">Usuário</label>
+          <input id="usernameInput" type="text" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+        </div>
+        <button type="submit" class="btn-save w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
+          Salvar Perfil
+        </button>
+      </form>
+    </section>
+
+    <!-- Seção: Alterar Senha -->
+    <section class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-lock mr-2"></i> Alterar Senha</h2>
+      <form id="passwordForm" class="space-y-4">
+        <div>
+          <label for="currentPwd" class="block text-sm font-medium text-gray-700">Senha Atual</label>
+          <input id="currentPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+        </div>
+        <div>
+          <label for="newPwd" class="block text-sm font-medium text-gray-700">Nova Senha</label>
+          <input id="newPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+        </div>
+        <button type="submit" class="btn-save w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
+          Atualizar Senha
+        </button>
+      </form>
+    </section>
+
+    <!-- Seção: Tema -->
+    <section class="bg-white rounded-lg shadow p-6 mb-6 flex items-center justify-between">
+      <div class="flex items-center">
+        <i class="fas fa-adjust text-xl mr-4"></i>
+        <div>
+          <h2 class="text-lg font-semibold">Tema</h2>
+          <p class="text-sm text-gray-600">Claro / Escuro</p>
+        </div>
+      </div>
+      <button id="themeToggle" class="w-16 h-8 bg-gray-200 rounded-full flex items-center p-1 transition">
+        <span class="dot w-6 h-6 bg-white rounded-full shadow"></span>
+      </button>
+    </section>
+
+    <!-- Seção: Usuários Bloqueados -->
+    <section class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-ban mr-2"></i> Usuários Bloqueados</h2>
+      <ul id="blockedList" class="space-y-3">
+        <!-- preenchido via JS -->
+      </ul>
+    </section>
+
+    <!-- Seção: Apagar Conta -->
+    <section class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-trash-alt mr-2"></i> Apagar Conta</h2>
+      <button id="deleteAccount" class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+        Excluir Minha Conta
+      </button>
+    </section>
+  </main>
+
+  <script>
+    const API = 'https://whatsapp-clone-wwjc.onrender.com/api';
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
+    // Voltar ao chat
+    document.getElementById('backBtn').onclick = () => window.location.href = 'chat.html';
+
+    // Carrega perfil atual
+    async function loadProfile() {
+      const res = await fetch(`${API}/auth/verify`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const { username } = await res.json();
+      document.getElementById('usernameInput').value = username;
+    }
+    loadProfile();
+
+    // Salvar perfil
+    document.getElementById('profileForm').onsubmit = async e => {
+      e.preventDefault();
+      const newUsername = document.getElementById('usernameInput').value.trim();
+      if (!newUsername) return alert('Digite um nome de usuário.');
+      const res = await fetch(`${API}/users/${userId}/update-username`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: newUsername })
+      });
+      if (res.ok) {
+        alert('Perfil atualizado com sucesso.');
+        localStorage.setItem('username', newUsername);
+      } else {
+        const { message } = await res.json();
+        alert('Erro: ' + message);
+      }
+    };
+
+    // Alterar senha
+    document.getElementById('passwordForm').onsubmit = async e => {
+      e.preventDefault();
+      const currentPwd = document.getElementById('currentPwd').value;
+      const newPwd = document.getElementById('newPwd').value;
+      if (!currentPwd || !newPwd) return alert('Preencha ambas as senhas.');
+      const res = await fetch(`${API}/users/${userId}/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd })
+      });
+      if (res.ok) {
+        alert('Senha atualizada com sucesso.');
+        document.getElementById('currentPwd').value = '';
+        document.getElementById('newPwd').value = '';
+      } else {
+        const { message } = await res.json();
+        alert('Erro: ' + message);
+      }
+    };
+
+    // Tema claro/escuro
+    const themeToggle = document.getElementById('themeToggle');
+    const dot = themeToggle.querySelector('.dot');
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+    themeToggle.onclick = () => {
+      const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+      setTheme(next);
+    };
+    function setTheme(name) {
+      if (name === 'dark') {
+        document.documentElement.classList.add('dark');
+        dot.classList.add('translate-x-8');
+      } else {
+        document.documentElement.classList.remove('dark');
+        dot.classList.remove('translate-x-8');
+      }
+      localStorage.setItem('theme', name);
+    }
+
+    // Lista de bloqueados
+    async function loadBlocked() {
+      const res = await fetch(`${API}/users/me/blocked`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const list = res.ok ? await res.json() : [];
+      const ul = document.getElementById('blockedList');
+      ul.innerHTML = '';
+      list.forEach(u => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        li.innerHTML = `
+          <span>${u.username}</span>
+          <button data-id="${u._id}" class="text-indigo-600 hover:underline">Desbloquear</button>
+        `;
+        ul.appendChild(li);
+      });
+      ul.querySelectorAll('button').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          await fetch(`${API}/users/${id}/unblock`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          loadBlocked();
+        };
+      });
+    }
+    loadBlocked();
+
+    // Excluir conta
+    document.getElementById('deleteAccount').onclick = async () => {
+      if (!confirm('Tem certeza que deseja excluir sua conta? Essa ação não pode ser desfeita.')) return;
+      const res = await fetch(`${API}/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert('Conta excluída.');
+        localStorage.clear();
+        window.location.href = 'login.html';
+      } else {
+        const { message } = await res.json();
+        alert('Erro: ' + message);
+      }
+    };
+  </script>
+</body>
+</html>
