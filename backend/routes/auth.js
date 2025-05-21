@@ -13,9 +13,8 @@ router.post('/register', async (req, res) => {
     }
     const user = await User.create({ username, password });
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token });
+    res.status(201).json({ token, username: user.username });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: 'Erro no servidor' });
   }
 });
@@ -29,20 +28,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Credenciais inválidas' });
     }
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erro no servidor' });
-  }
-});
-
-// Lista usuários
-router.get('/users', async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.json(users);
+    res.json({ token, username: user.username });
   } catch {
-    res.status(500).json({ message: 'Erro ao buscar usuários' });
+    res.status(500).json({ message: 'Erro no servidor' });
   }
 });
 
