@@ -1,564 +1,77 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat - WhatsApp Clone</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div id="chat-container">
+    <h2>Bem-vindo ao Chat</h2>
+    <div>
+      <strong>Usuários online:</strong>
+      <ul id="online-users"></ul>
+    </div>
+
+    <div id="chat-box"></div>
+
+    <input type="text" id="to" placeholder="ID do destinatário" />
+    <input type="text" id="message" placeholder="Digite sua mensagem..." />
+    <button onclick="sendMessage()">Enviar</button>
+  </div>
+
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            whatsapp: {
-              light: '#e2f7cb',
-              DEFAULT: '#dcf8c6',
-              dark: '#128c7e',
-              darker: '#075e54'
-            },
-            error: {
-              DEFAULT: '#ef4444'
-            }
-          }
-        }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Usuário não autenticado.");
+      window.location.href = "login.html";
+    }
+
+    const socket = io("https://whatsapp-clone-oz95.onrender.com", {
+      transports: ["websocket"], // FORÇA WebSocket
+      auth: {
+        token
       }
+    });
+
+    socket.on("connect", () => {
+      console.log("✅ Conectado ao servidor Socket.IO");
+    });
+
+    socket.on("onlineUsers", (users) => {
+      const list = document.getElementById("online-users");
+      list.innerHTML = "";
+      users.forEach((userId) => {
+        const li = document.createElement("li");
+        li.textContent = userId;
+        list.appendChild(li);
+      });
+    });
+
+    socket.on("history", (msgs) => {
+      msgs.forEach(renderMessage);
+    });
+
+    socket.on("message", (msg) => {
+      renderMessage(msg);
+    });
+
+    function sendMessage() {
+      const to = document.getElementById("to").value;
+      const text = document.getElementById("message").value;
+      if (!to || !text) return alert("Preencha todos os campos.");
+      socket.emit("join", { to }); // Garante que esteja na sala
+      socket.emit("message", { to, text });
+      document.getElementById("message").value = "";
+    }
+
+    function renderMessage({ from, text, timestamp }) {
+      const div = document.createElement("div");
+      div.textContent = `[${new Date(timestamp).toLocaleTimeString()}] ${from}: ${text}`;
+      document.getElementById("chat-box").appendChild(div);
     }
   </script>
-  
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Socket.IO -->
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  
-  <!-- Custom Styles -->
-  <style>
-    .chat-bubble {
-      max-width: 70%;
-      word-wrap: break-word;
-      border-radius: 1rem;
-      padding: 0.75rem 1rem;
-      position: relative;
-      margin: 0.5rem 0;
-      animation: fadeIn 0.2s ease-out;
-    }
-    
-    .chat-bubble.sent {
-      background-color: #dcf8c6;
-      align-self: flex-end;
-      border-top-right-radius: 0.25rem;
-    }
-    
-    .chat-bubble.received {
-      background-color: white;
-      align-self: flex-start;
-      border-top-left-radius: 0.25rem;
-    }
-    
-    .user-item:hover {
-      background-color: #f5f5f5;
-      cursor: pointer;
-    }
-    
-    .user-item.active {
-      background-color: #ebebeb;
-    }
-    
-    .typing-indicator span {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background-color: #666;
-      border-radius: 50%;
-      margin: 0 2px;
-      opacity: 0.4;
-    }
-    
-    .typing-indicator span:nth-child(1) {
-      animation: typing 1s infinite;
-    }
-    
-    .typing-indicator span:nth-child(2) {
-      animation: typing 1s infinite 0.2s;
-    }
-    
-    .typing-indicator span:nth-child(3) {
-      animation: typing 1s infinite 0.4s;
-    }
-    
-    @keyframes typing {
-      0%, 100% {
-        opacity: 0.4;
-        transform: translateY(0);
-      }
-      50% {
-        opacity: 1;
-        transform: translateY(-3px);
-      }
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .message-time {
-      font-size: 0.7rem;
-      color: #666;
-      margin-top: 0.25rem;
-      text-align: right;
-    }
-    
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
-    }
-    
-    .scrollbar-hide {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    
-    .profile-pic {
-      background-size: cover;
-      background-position: center;
-    }
-    
-    .connection-status {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 15px;
-      border-radius: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      transition: all 0.3s ease;
-    }
-    
-    .connection-status.connecting {
-      background-color: #f59e0b;
-      color: white;
-    }
-    
-    .connection-status.connected {
-      background-color: #10b981;
-      color: white;
-    }
-    
-    .connection-status.disconnected {
-      background-color: #ef4444;
-      color: white;
-    }
-    
-    .connection-status.error {
-      background-color: #ef4444;
-      color: white;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 font-sans h-screen flex items-center justify-center">
-  <div class="flex h-[90vh] w-[90vw] shadow-2xl rounded-xl overflow-hidden">
-    <!-- Sidebar -->
-    <div class="w-1/3 bg-white flex flex-col border-r border-gray-200">
-      <!-- Header -->
-      <div class="bg-whatsapp-darker text-white p-4 flex items-center">
-        <div id="myProfilePic" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3 profile-pic">
-          <i class="fas fa-user text-gray-600"></i>
-        </div>
-        <div class="flex-1">
-          <h2 id="myName" class="font-semibold">Carregando...</h2>
-          <p id="myStatus" class="text-xs opacity-80">Online</p>
-        </div>
-        <div class="flex space-x-4">
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-search"></i>
-          </button>
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-ellipsis-vertical"></i>
-          </button>
-        </div>
-      </div>
-      
-      <!-- Search -->
-      <div class="p-2 bg-whatsapp-dark">
-        <div class="bg-white rounded-lg flex items-center px-3 py-1">
-          <i class="fas fa-search text-gray-500 mr-2"></i>
-          <input type="text" placeholder="Pesquisar ou começar nova conversa" 
-                 class="flex-1 py-1 text-sm outline-none">
-        </div>
-      </div>
-      
-      <!-- Chats List -->
-      <div class="flex-1 overflow-y-auto scrollbar-hide" id="usersList">
-        <!-- Users will be populated by JavaScript -->
-      </div>
-    </div>
-    
-    <!-- Chat Area -->
-    <div class="w-2/3 flex flex-col bg-gray-50">
-      <!-- Chat Header -->
-      <div class="bg-whatsapp-dark text-white p-3 flex items-center justify-between border-b border-gray-200">
-        <div class="flex items-center">
-          <div id="chatUserPic" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3 profile-pic">
-            <i class="fas fa-user text-gray-600"></i>
-          </div>
-          <div>
-            <h2 id="chatWith" class="font-semibold">Selecione um contato</h2>
-            <div id="typingIndicator" class="typing-indicator hidden">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span class="text-xs">digitando...</span>
-            </div>
-            <p id="chatUserStatus" class="text-xs opacity-80 hidden">Online</p>
-          </div>
-        </div>
-        <div class="flex space-x-4">
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-search"></i>
-          </button>
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-phone"></i>
-          </button>
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-video"></i>
-          </button>
-          <button class="text-white opacity-80 hover:opacity-100">
-            <i class="fas fa-ellipsis-vertical"></i>
-          </button>
-        </div>
-      </div>
-      
-      <!-- Messages -->
-      <div id="messages" class="flex-1 p-4 overflow-y-auto scrollbar-hide bg-[#e5ddd5] bg-opacity-30 bg-[url('https://web.whatsapp.com/img/bg-chat-tile-light_a4be512e7195b6b733d9110b408f075d.png')]">
-        <!-- Messages will be populated by JavaScript -->
-      </div>
-      
-      <!-- Message Input -->
-      <div class="bg-white p-3 flex items-center border-t border-gray-200">
-        <div class="flex space-x-2 mr-2">
-          <button class="text-gray-500 hover:text-gray-700 w-10 h-10 rounded-full flex items-center justify-center">
-            <i class="far fa-face-smile"></i>
-          </button>
-          <button class="text-gray-500 hover:text-gray-700 w-10 h-10 rounded-full flex items-center justify-center">
-            <i class="fas fa-paperclip"></i>
-          </button>
-        </div>
-        <form id="msgForm" class="flex-1 flex">
-          <input id="msgInput" 
-                 type="text" 
-                 placeholder="Selecione um usuário para conversar"
-                 class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-gray-800 focus:outline-none"
-                 autocomplete="off"
-                 disabled />
-          <button type="submit" 
-                  class="ml-2 w-10 h-10 rounded-full bg-whatsapp-dark text-white flex items-center justify-center">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Connection Status Indicator -->
-  <div id="connectionStatus" class="connection-status hidden">
-    <i class="fas fa-circle mr-2"></i>
-    <span id="connectionStatusText">Status</span>
-  </div>
-
-  <!-- JavaScript -->
-  <script>
-  const mockUsers = {
-    'user1': { id: 'user1', name: 'João Silva', status: 'Online', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
-    'user2': { id: 'user2', name: 'Maria Souza', status: 'Online', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
-    'user3': { id: 'user3', name: 'Carlos Oliveira', status: 'Última vez hoje às 14:30', avatar: 'https://randomuser.me/api/portraits/men/3.jpg' },
-    'user4': { id: 'user4', name: 'Ana Santos', status: 'Online', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' }
-  };
-
-  document.addEventListener('DOMContentLoaded', function() {
-    const socketUrl = 'https://whatsapp-clone-oz95.onrender.com';
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Usuário não autenticado! Faça login.');
-      window.location.href = '/login.html';
-      return;
-    }
-
-    const currentUserId = getUserIdFromToken(token);
-    if (!currentUserId) {
-      alert('Token inválido! Faça login novamente.');
-      window.location.href = '/login.html';
-      return;
-    }
-
-    const currentUser = mockUsers[currentUserId] || {
-      id: currentUserId,
-      name: `Usuário ${currentUserId}`,
-      status: 'Online',
-      avatar: ''
-    };
-
-    document.getElementById('myName').textContent = currentUser.name;
-    if (currentUser.avatar) {
-      document.getElementById('myProfilePic').style.backgroundImage = `url(${currentUser.avatar})`;
-      document.getElementById('myProfilePic').innerHTML = '';
-    }
-
-    const connectionStatus = document.getElementById('connectionStatus');
-    const connectionStatusText = document.getElementById('connectionStatusText');
-
-    updateConnectionStatus('connecting', 'Conectando...');
-
-    let socket;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-
-    function connectSocket() {
-      socket = io(socketUrl, {
-        auth: { token },
-        reconnectionAttempts: maxReconnectAttempts,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000
-      });
-
-      setupSocketEvents();
-    }
-
-    function setupSocketEvents() {
-      socket.on('connect', () => {
-        reconnectAttempts = 0;
-        updateConnectionStatus('connected', 'Conectado');
-        setTimeout(() => connectionStatus.classList.add('hidden'), 3000);
-      });
-
-      socket.on('disconnect', (reason) => {
-        updateConnectionStatus(
-          reason === 'io server disconnect' ? 'error' : 'disconnected',
-          reason === 'io server disconnect' ? 'Desconectado pelo servidor' : 'Desconectado'
-        );
-      });
-
-      socket.on('connect_error', (err) => {
-        reconnectAttempts++;
-        if (reconnectAttempts >= maxReconnectAttempts) {
-          updateConnectionStatus('error', 'Falha na conexão. Recarregue a página.');
-        } else {
-          updateConnectionStatus('connecting', `Tentando reconectar (${reconnectAttempts}/${maxReconnectAttempts})...`);
-        }
-      });
-
-      socket.on('reconnect_failed', () => {
-        updateConnectionStatus('error', 'Falha ao reconectar. Recarregue a página.');
-      });
-
-      socket.on('onlineUsers', (users) => updateOnlineUsers(users));
-
-      socket.on('history', (msgs) => {
-        messagesContainer.innerHTML = '';
-        msgs.forEach(msg => renderMessage(msg));
-      });
-
-      socket.on('message', (msg) => {
-        const userId = getUserIdFromToken(token);
-        if ((msg.from === currentChatUser && msg.to === userId) || (msg.to === currentChatUser && msg.from === userId)) {
-          renderMessage(msg);
-        }
-      });
-
-      socket.on('typing', (userId) => {
-        if (userId === currentChatUser) {
-          typingIndicator.classList.remove('hidden');
-          chatUserStatus.classList.add('hidden');
-        }
-      });
-
-      socket.on('stopTyping', (userId) => {
-        if (userId === currentChatUser) {
-          typingIndicator.classList.add('hidden');
-          chatUserStatus.classList.remove('hidden');
-        }
-      });
-    }
-
-    function updateConnectionStatus(status, text) {
-      connectionStatus.className = `connection-status ${status}`;
-      connectionStatusText.textContent = text;
-      connectionStatus.classList.remove('hidden');
-    }
-
-    const usersList = document.getElementById('usersList');
-    const chatWith = document.getElementById('chatWith');
-    const chatUserPic = document.getElementById('chatUserPic');
-    const chatUserStatus = document.getElementById('chatUserStatus');
-    const messagesContainer = document.getElementById('messages');
-    const msgForm = document.getElementById('msgForm');
-    const msgInput = document.getElementById('msgInput');
-    const typingIndicator = document.getElementById('typingIndicator');
-
-    let currentChatUser = null;
-    let typingTimeout;
-
-    connectSocket();
-
-    function updateOnlineUsers(users) {
-      usersList.innerHTML = '';
-
-      const sortedUsers = [...users].sort((a, b) => {
-        const aOnline = mockUsers[a]?.status === 'Online';
-        const bOnline = mockUsers[b]?.status === 'Online';
-        return bOnline - aOnline;
-      });
-
-      sortedUsers.forEach(userId => {
-        if (userId === currentUserId) return;
-
-        const user = mockUsers[userId] || {
-          id: userId,
-          name: `Usuário ${userId}`,
-          status: 'Online',
-          avatar: ''
-        };
-
-        const userItem = document.createElement('div');
-        userItem.className = `user-item p-3 flex items-center border-b border-gray-100 ${userId === currentChatUser ? 'active' : ''}`;
-
-        const userAvatar = document.createElement('div');
-        userAvatar.className = 'relative mr-3';
-
-        const avatarIcon = document.createElement('div');
-        avatarIcon.className = 'w-12 h-12 rounded-full bg-green-200 flex items-center justify-center profile-pic';
-        if (user.avatar) {
-          avatarIcon.style.backgroundImage = `url(${user.avatar})`;
-        } else {
-          avatarIcon.innerHTML = `<i class="fas fa-user text-green-600"></i>`;
-        }
-
-        const onlineStatus = document.createElement('span');
-        onlineStatus.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.status === 'Online' ? 'bg-green-500' : 'bg-gray-400'}`;
-
-        userAvatar.appendChild(avatarIcon);
-        userAvatar.appendChild(onlineStatus);
-
-        const userInfo = document.createElement('div');
-        userInfo.className = 'flex-1';
-
-        const userHeader = document.createElement('div');
-        userHeader.className = 'flex justify-between items-center';
-
-        const userName = document.createElement('h3');
-        userName.className = 'font-semibold';
-        userName.textContent = user.name;
-
-        userHeader.appendChild(userName);
-
-        const lastSeen = document.createElement('p');
-        lastSeen.className = 'text-xs text-gray-500';
-        lastSeen.textContent = user.status;
-
-        userInfo.appendChild(userHeader);
-        userInfo.appendChild(lastSeen);
-
-        userItem.appendChild(userAvatar);
-        userItem.appendChild(userInfo);
-        userItem.addEventListener('click', () => startChat(userId, user));
-
-        usersList.appendChild(userItem);
-      });
-    }
-
-    msgForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const text = msgInput.value.trim();
-      if (!text || !currentChatUser) return;
-
-      socket.emit('message', { to: currentChatUser, text });
-      msgInput.value = '';
-    });
-
-    // Melhorado: debounce de digitação
-    msgInput.addEventListener('input', () => {
-      if (!currentChatUser) return;
-
-      socket.emit('typing', currentChatUser);
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        socket.emit('stopTyping', currentChatUser);
-      }, 1000);
-    });
-
-    function startChat(userId, userData) {
-      currentChatUser = userId;
-
-      const user = userData || mockUsers[userId] || {
-        id: userId,
-        name: `Usuário ${userId}`,
-        status: 'Online',
-        avatar: ''
-      };
-
-      chatWith.textContent = user.name;
-
-      if (user.avatar) {
-        chatUserPic.style.backgroundImage = `url(${user.avatar})`;
-        chatUserPic.innerHTML = '';
-      } else {
-        chatUserPic.style.backgroundImage = '';
-        chatUserPic.innerHTML = '<i class="fas fa-user text-gray-600"></i>';
-      }
-
-      chatUserStatus.textContent = user.status;
-      chatUserStatus.classList.remove('hidden');
-      typingIndicator.classList.add('hidden');
-
-      messagesContainer.innerHTML = '';
-      msgInput.disabled = false;
-      msgInput.placeholder = "Digite uma mensagem";
-      msgInput.focus();
-
-      document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
-      socket.emit('join', { to: userId });
-    }
-
-    function renderMessage(msg) {
-      const isMe = msg.from === currentUserId;
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `chat-bubble ${isMe ? 'sent' : 'received'}`;
-
-      if (!isMe) {
-        const senderName = document.createElement('p');
-        senderName.className = 'text-xs font-semibold text-gray-600 mb-1';
-        const user = mockUsers[msg.from] || { name: `Usuário ${msg.from}` };
-        senderName.textContent = user.name;
-        messageDiv.appendChild(senderName);
-      }
-
-      const messageContent = document.createElement('div');
-      messageContent.textContent = msg.text;
-      messageDiv.appendChild(messageContent);
-
-      const messageTime = document.createElement('div');
-      messageTime.className = 'message-time';
-      const timestamp = new Date(msg.timestamp || Date.now());
-      const hours = timestamp.getHours().toString().padStart(2, '0');
-      const minutes = timestamp.getMinutes().toString().padStart(2, '0');
-      messageTime.textContent = `${hours}:${minutes}${isMe ? ' ✓✓' : ''}`;
-      messageDiv.appendChild(messageTime);
-
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function getUserIdFromToken(token) {
-      try {
-        const payload = token.split('.')[1];
-        const decoded = JSON.parse(atob(payload));
-        return decoded.id;
-      } catch {
-        return null;
-      }
-    }
-  });
-</script>
+</body>
+</html>
