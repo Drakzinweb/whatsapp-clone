@@ -1,15 +1,109 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>WhatsApp Clone</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bem-vindo à Lunaria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+    }
+    .moon-glow {
+      box-shadow: 0 0 80px 30px rgba(66, 165, 245, 0.3);
+    }
+    .btn-hover {
+      transition: all 0.3s ease;
+    }
+    .btn-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    .stars {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      background-color: white;
+      border-radius: 50%;
+      animation: twinkle 5s infinite;
+    }
+    @keyframes twinkle {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <h1>WhatsApp Clone</h1>
-    <a href="login.html">Entrar</a>
-    <a href="register.html">Registrar</a>
+<body class="min-h-screen flex flex-col items-center text-white relative overflow-auto">
+  <div class="stars" id="stars"></div>
+
+  <div class="container mx-auto px-4 py-16 z-10">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="moon-glow w-32 h-32 bg-blue-100 rounded-full mx-auto mb-8 flex items-center justify-center">
+        <i class="fas fa-moon text-5xl text-blue-600"></i>
+      </div>
+      
+      <h1 class="text-5xl md:text-6xl font-bold mb-6">
+        Bem-vindo à <span class="text-blue-300">Lunaria</span>
+      </h1>
+      
+      <p class="text-xl md:text-2xl mb-12 max-w-2xl mx-auto leading-relaxed">
+        Conecte-se sob a luz da lua. Uma experiência de conversação extraordinária que eleva suas conexões a novos patamares.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row justify-center gap-6">
+        <a href="login.html" class="btn-hover bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-8 rounded-full text-lg shadow-lg">
+          <i class="fas fa-sign-in-alt mr-2"></i> Entrar
+        </a>
+        
+        <a href="register.html" class="btn-hover bg-transparent border-2 border-blue-400 hover:bg-blue-900/30 text-blue-300 font-semibold py-4 px-8 rounded-full text-lg shadow-lg">
+          <i class="fas fa-user-plus mr-2"></i> Registrar
+        </a>
+      </div>
+      
+      <div class="mt-16 text-blue-200">
+        <p class="text-sm">
+          <i class="fas fa-lock mr-1"></i> Suas conversas são criptografadas de ponta a ponta
+        </p>
+      </div>
+    </div>
   </div>
+
+  <script>
+    // Cria as estrelas no background
+    document.addEventListener('DOMContentLoaded', function() {
+      const starsContainer = document.getElementById('stars');
+      const starsCount = 100;
+      
+      for (let i = 0; i < starsCount; i++) {
+        const star = document.createElement('div');
+        star.classList.add('star');
+        
+        // Tamanho aleatório entre 1px e 3px
+        const size = Math.random() * 2 + 1;
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        
+        // Posição aleatória
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        
+        // Atraso aleatório na animação
+        star.style.animationDelay = `${Math.random() * 5}s`;
+        
+        starsContainer.appendChild(star);
+      }
+    });
+  </script>
 </body>
 </html>
