@@ -17,6 +17,9 @@
               DEFAULT: '#dcf8c6',
               dark: '#128c7e',
               darker: '#075e54'
+            },
+            error: {
+              DEFAULT: '#ef4444'
             }
           }
         }
@@ -116,6 +119,44 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    
+    .profile-pic {
+      background-size: cover;
+      background-position: center;
+    }
+    
+    .connection-status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    
+    .connection-status.connecting {
+      background-color: #f59e0b;
+      color: white;
+    }
+    
+    .connection-status.connected {
+      background-color: #10b981;
+      color: white;
+    }
+    
+    .connection-status.disconnected {
+      background-color: #ef4444;
+      color: white;
+    }
+    
+    .connection-status.error {
+      background-color: #ef4444;
+      color: white;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans h-screen flex items-center justify-center">
@@ -124,12 +165,12 @@
     <div class="w-1/3 bg-white flex flex-col border-r border-gray-200">
       <!-- Header -->
       <div class="bg-whatsapp-darker text-white p-4 flex items-center">
-        <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+        <div id="myProfilePic" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3 profile-pic">
           <i class="fas fa-user text-gray-600"></i>
         </div>
         <div class="flex-1">
-          <h2 class="font-semibold">Meu Perfil</h2>
-          <p class="text-xs opacity-80">Online</p>
+          <h2 id="myName" class="font-semibold">Carregando...</h2>
+          <p id="myStatus" class="text-xs opacity-80">Online</p>
         </div>
         <div class="flex space-x-4">
           <button class="text-white opacity-80 hover:opacity-100">
@@ -161,7 +202,7 @@
       <!-- Chat Header -->
       <div class="bg-whatsapp-dark text-white p-3 flex items-center justify-between border-b border-gray-200">
         <div class="flex items-center">
-          <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+          <div id="chatUserPic" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3 profile-pic">
             <i class="fas fa-user text-gray-600"></i>
           </div>
           <div>
@@ -172,6 +213,7 @@
               <span></span>
               <span class="text-xs">digitando...</span>
             </div>
+            <p id="chatUserStatus" class="text-xs opacity-80 hidden">Online</p>
           </div>
         </div>
         <div class="flex space-x-4">
@@ -221,136 +263,302 @@
     </div>
   </div>
 
+  <!-- Connection Status Indicator -->
+  <div id="connectionStatus" class="connection-status hidden">
+    <i class="fas fa-circle mr-2"></i>
+    <span id="connectionStatusText">Status</span>
+  </div>
+
   <!-- JavaScript -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const socketUrl = 'https://whatsapp-clone-oz95.onrender.com'; // backend real
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        alert('Usuário não autenticado! Faça login.');
-        window.location.href = '/login.html';
-      }
-      
-      const socket = io(socketUrl, {
-        auth: { token }
+  const mockUsers = {
+    'user1': { id: 'user1', name: 'João Silva', status: 'Online', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
+    'user2': { id: 'user2', name: 'Maria Souza', status: 'Online', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
+    'user3': { id: 'user3', name: 'Carlos Oliveira', status: 'Última vez hoje às 14:30', avatar: 'https://randomuser.me/api/portraits/men/3.jpg' },
+    'user4': { id: 'user4', name: 'Ana Santos', status: 'Online', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' }
+  };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const socketUrl = 'https://whatsapp-clone-oz95.onrender.com';
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Usuário não autenticado! Faça login.');
+      window.location.href = '/login.html';
+      return;
+    }
+
+    const currentUserId = getUserIdFromToken(token);
+    if (!currentUserId) {
+      alert('Token inválido! Faça login novamente.');
+      window.location.href = '/login.html';
+      return;
+    }
+
+    const currentUser = mockUsers[currentUserId] || {
+      id: currentUserId,
+      name: `Usuário ${currentUserId}`,
+      status: 'Online',
+      avatar: ''
+    };
+
+    document.getElementById('myName').textContent = currentUser.name;
+    if (currentUser.avatar) {
+      document.getElementById('myProfilePic').style.backgroundImage = `url(${currentUser.avatar})`;
+      document.getElementById('myProfilePic').innerHTML = '';
+    }
+
+    const connectionStatus = document.getElementById('connectionStatus');
+    const connectionStatusText = document.getElementById('connectionStatusText');
+
+    updateConnectionStatus('connecting', 'Conectando...');
+
+    let socket;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    function connectSocket() {
+      socket = io(socketUrl, {
+        auth: { token },
+        reconnectionAttempts: maxReconnectAttempts,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000
       });
-      
-      const usersList = document.getElementById('usersList');
-      const chatWith = document.getElementById('chatWith');
-      const messagesContainer = document.getElementById('messages');
-      const msgForm = document.getElementById('msgForm');
-      const msgInput = document.getElementById('msgInput');
-      
-      let currentChatUser = null;
-      
-      socket.on('onlineUsers', (users) => {
-        usersList.innerHTML = '';
-        users.forEach(userId => {
-          if (userId === getUserIdFromToken(token)) return;
-          
-          const userItem = document.createElement('div');
-          userItem.className = 'user-item p-3 flex items-center border-b border-gray-100';
-          
-          const userAvatar = document.createElement('div');
-          userAvatar.className = 'relative mr-3';
-          
-          const avatarIcon = document.createElement('div');
-          avatarIcon.className = 'w-12 h-12 rounded-full bg-green-200 flex items-center justify-center';
-          avatarIcon.innerHTML = '<i class="fas fa-user text-green-600"></i>';
-          
-          const onlineStatus = document.createElement('span');
-          onlineStatus.className = 'absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white';
-          
-          userAvatar.appendChild(avatarIcon);
-          userAvatar.appendChild(onlineStatus);
-          
-          const userInfo = document.createElement('div');
-          userInfo.className = 'flex-1';
-          
-          const userHeader = document.createElement('div');
-          userHeader.className = 'flex justify-between items-center';
-          
-          const userName = document.createElement('h3');
-          userName.className = 'font-semibold';
-          userName.textContent = `Usuário ${userId}`;
-          
-          userHeader.appendChild(userName);
-          
-          userInfo.appendChild(userHeader);
-          userItem.appendChild(userAvatar);
-          userItem.appendChild(userInfo);
-          
-          userItem.addEventListener('click', () => startChat(userId));
-          
-          usersList.appendChild(userItem);
-        });
+
+      setupSocketEvents();
+    }
+
+    function setupSocketEvents() {
+      socket.on('connect', () => {
+        reconnectAttempts = 0;
+        updateConnectionStatus('connected', 'Conectado');
+        setTimeout(() => connectionStatus.classList.add('hidden'), 3000);
       });
-      
+
+      socket.on('disconnect', (reason) => {
+        updateConnectionStatus(
+          reason === 'io server disconnect' ? 'error' : 'disconnected',
+          reason === 'io server disconnect' ? 'Desconectado pelo servidor' : 'Desconectado'
+        );
+      });
+
+      socket.on('connect_error', (err) => {
+        reconnectAttempts++;
+        if (reconnectAttempts >= maxReconnectAttempts) {
+          updateConnectionStatus('error', 'Falha na conexão. Recarregue a página.');
+        } else {
+          updateConnectionStatus('connecting', `Tentando reconectar (${reconnectAttempts}/${maxReconnectAttempts})...`);
+        }
+      });
+
+      socket.on('reconnect_failed', () => {
+        updateConnectionStatus('error', 'Falha ao reconectar. Recarregue a página.');
+      });
+
+      socket.on('onlineUsers', (users) => updateOnlineUsers(users));
+
       socket.on('history', (msgs) => {
         messagesContainer.innerHTML = '';
         msgs.forEach(msg => renderMessage(msg));
       });
-      
+
       socket.on('message', (msg) => {
         const userId = getUserIdFromToken(token);
-        if ((msg.from === currentChatUser && msg.to === userId) ||
-            (msg.to === currentChatUser && msg.from === userId)) {
+        if ((msg.from === currentChatUser && msg.to === userId) || (msg.to === currentChatUser && msg.from === userId)) {
           renderMessage(msg);
         }
       });
-      
-      msgForm.addEventListener('submit', e => {
-        e.preventDefault();
-        const text = msgInput.value.trim();
-        if (!text || !currentChatUser) return;
-        
-        socket.emit('message', { to: currentChatUser, text });
-        msgInput.value = '';
-      });
-      
-      function startChat(userId) {
-        currentChatUser = userId;
-        chatWith.textContent = `Usuário: ${userId}`;
-        messagesContainer.innerHTML = '';
-        msgInput.disabled = false;
-        msgInput.placeholder = "Digite uma mensagem";
-        socket.emit('join', { to: userId });
-      }
-      
-      function renderMessage(msg) {
-        const isMe = msg.from === getUserIdFromToken(token);
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-bubble ${isMe ? 'sent' : 'received'}`;
-        
-        const messageContent = document.createElement('p');
-        messageContent.textContent = msg.text;
-        
-        const messageTime = document.createElement('div');
-        messageTime.className = 'message-time';
-        
-        const timestamp = new Date(msg.timestamp);
-        const hours = timestamp.getHours().toString().padStart(2, '0');
-        const minutes = timestamp.getMinutes().toString().padStart(2, '0');
-        messageTime.textContent = `${hours}:${minutes} ${isMe ? '✓✓' : ''}`;
-        
-        messageDiv.appendChild(messageContent);
-        messageDiv.appendChild(messageTime);
-        
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }
-      
-      function getUserIdFromToken(token) {
-        try {
-          const payload = token.split('.')[1];
-          const decoded = JSON.parse(atob(payload));
-          return decoded.id;
-        } catch {
-          return null;
+
+      socket.on('typing', (userId) => {
+        if (userId === currentChatUser) {
+          typingIndicator.classList.remove('hidden');
+          chatUserStatus.classList.add('hidden');
         }
-      }
+      });
+
+      socket.on('stopTyping', (userId) => {
+        if (userId === currentChatUser) {
+          typingIndicator.classList.add('hidden');
+          chatUserStatus.classList.remove('hidden');
+        }
+      });
+    }
+
+    function updateConnectionStatus(status, text) {
+      connectionStatus.className = `connection-status ${status}`;
+      connectionStatusText.textContent = text;
+      connectionStatus.classList.remove('hidden');
+    }
+
+    const usersList = document.getElementById('usersList');
+    const chatWith = document.getElementById('chatWith');
+    const chatUserPic = document.getElementById('chatUserPic');
+    const chatUserStatus = document.getElementById('chatUserStatus');
+    const messagesContainer = document.getElementById('messages');
+    const msgForm = document.getElementById('msgForm');
+    const msgInput = document.getElementById('msgInput');
+    const typingIndicator = document.getElementById('typingIndicator');
+
+    let currentChatUser = null;
+    let typingTimeout;
+
+    connectSocket();
+
+    function updateOnlineUsers(users) {
+      usersList.innerHTML = '';
+
+      const sortedUsers = [...users].sort((a, b) => {
+        const aOnline = mockUsers[a]?.status === 'Online';
+        const bOnline = mockUsers[b]?.status === 'Online';
+        return bOnline - aOnline;
+      });
+
+      sortedUsers.forEach(userId => {
+        if (userId === currentUserId) return;
+
+        const user = mockUsers[userId] || {
+          id: userId,
+          name: `Usuário ${userId}`,
+          status: 'Online',
+          avatar: ''
+        };
+
+        const userItem = document.createElement('div');
+        userItem.className = `user-item p-3 flex items-center border-b border-gray-100 ${userId === currentChatUser ? 'active' : ''}`;
+
+        const userAvatar = document.createElement('div');
+        userAvatar.className = 'relative mr-3';
+
+        const avatarIcon = document.createElement('div');
+        avatarIcon.className = 'w-12 h-12 rounded-full bg-green-200 flex items-center justify-center profile-pic';
+        if (user.avatar) {
+          avatarIcon.style.backgroundImage = `url(${user.avatar})`;
+        } else {
+          avatarIcon.innerHTML = `<i class="fas fa-user text-green-600"></i>`;
+        }
+
+        const onlineStatus = document.createElement('span');
+        onlineStatus.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.status === 'Online' ? 'bg-green-500' : 'bg-gray-400'}`;
+
+        userAvatar.appendChild(avatarIcon);
+        userAvatar.appendChild(onlineStatus);
+
+        const userInfo = document.createElement('div');
+        userInfo.className = 'flex-1';
+
+        const userHeader = document.createElement('div');
+        userHeader.className = 'flex justify-between items-center';
+
+        const userName = document.createElement('h3');
+        userName.className = 'font-semibold';
+        userName.textContent = user.name;
+
+        userHeader.appendChild(userName);
+
+        const lastSeen = document.createElement('p');
+        lastSeen.className = 'text-xs text-gray-500';
+        lastSeen.textContent = user.status;
+
+        userInfo.appendChild(userHeader);
+        userInfo.appendChild(lastSeen);
+
+        userItem.appendChild(userAvatar);
+        userItem.appendChild(userInfo);
+        userItem.addEventListener('click', () => startChat(userId, user));
+
+        usersList.appendChild(userItem);
+      });
+    }
+
+    msgForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const text = msgInput.value.trim();
+      if (!text || !currentChatUser) return;
+
+      socket.emit('message', { to: currentChatUser, text });
+      msgInput.value = '';
     });
-  </script>
-</body>
-</html>
+
+    // Melhorado: debounce de digitação
+    msgInput.addEventListener('input', () => {
+      if (!currentChatUser) return;
+
+      socket.emit('typing', currentChatUser);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit('stopTyping', currentChatUser);
+      }, 1000);
+    });
+
+    function startChat(userId, userData) {
+      currentChatUser = userId;
+
+      const user = userData || mockUsers[userId] || {
+        id: userId,
+        name: `Usuário ${userId}`,
+        status: 'Online',
+        avatar: ''
+      };
+
+      chatWith.textContent = user.name;
+
+      if (user.avatar) {
+        chatUserPic.style.backgroundImage = `url(${user.avatar})`;
+        chatUserPic.innerHTML = '';
+      } else {
+        chatUserPic.style.backgroundImage = '';
+        chatUserPic.innerHTML = '<i class="fas fa-user text-gray-600"></i>';
+      }
+
+      chatUserStatus.textContent = user.status;
+      chatUserStatus.classList.remove('hidden');
+      typingIndicator.classList.add('hidden');
+
+      messagesContainer.innerHTML = '';
+      msgInput.disabled = false;
+      msgInput.placeholder = "Digite uma mensagem";
+      msgInput.focus();
+
+      document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
+      socket.emit('join', { to: userId });
+    }
+
+    function renderMessage(msg) {
+      const isMe = msg.from === currentUserId;
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-bubble ${isMe ? 'sent' : 'received'}`;
+
+      if (!isMe) {
+        const senderName = document.createElement('p');
+        senderName.className = 'text-xs font-semibold text-gray-600 mb-1';
+        const user = mockUsers[msg.from] || { name: `Usuário ${msg.from}` };
+        senderName.textContent = user.name;
+        messageDiv.appendChild(senderName);
+      }
+
+      const messageContent = document.createElement('div');
+      messageContent.textContent = msg.text;
+      messageDiv.appendChild(messageContent);
+
+      const messageTime = document.createElement('div');
+      messageTime.className = 'message-time';
+      const timestamp = new Date(msg.timestamp || Date.now());
+      const hours = timestamp.getHours().toString().padStart(2, '0');
+      const minutes = timestamp.getMinutes().toString().padStart(2, '0');
+      messageTime.textContent = `${hours}:${minutes}${isMe ? ' ✓✓' : ''}`;
+      messageDiv.appendChild(messageTime);
+
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function getUserIdFromToken(token) {
+      try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
+        return decoded.id;
+      } catch {
+        return null;
+      }
+    }
+  });
+</script>
