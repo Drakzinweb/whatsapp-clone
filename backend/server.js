@@ -1,17 +1,18 @@
 require('dotenv').config();
-const path = require('path');
+const path    = require('path');
 const express = require('express');
-const http = require('http');
+const http    = require('http');
 const mongoose = require('mongoose');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
+const cors    = require('cors');
+const jwt     = require('jsonwebtoken');
 const { Server } = require('socket.io');
 
 const authRoutes = require('./routes/auth');
-const User = require('./models/User');
-const Message = require('./models/Message');
+const userRoutes = require('./routes/users');    // <<< Nova rota de usuários
+const User        = require('./models/User');
+const Message     = require('./models/Message');
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
 
 const FRONTEND_ORIGIN = 'https://whatsapp-clone-wwjc.onrender.com';
@@ -32,6 +33,8 @@ app.get('/', (req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+// User routes (bloquear/desbloquear)
+app.use('/api/users', userRoutes);
 
 // MongoDB connect
 mongoose.connect(process.env.MONGO_URI, {
@@ -39,7 +42,10 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true
 })
 .then(() => console.log('✅ MongoDB conectado'))
-.catch(err => { console.error('❌ Erro MongoDB:', err); process.exit(1); });
+.catch(err => { 
+  console.error('❌ Erro MongoDB:', err); 
+  process.exit(1); 
+});
 
 // Socket.IO
 const io = new Server(server, {

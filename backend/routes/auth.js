@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -33,6 +34,38 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erro no servidor' });
+  }
+});
+
+// Bloquear usuário
+router.post('/block/:id', authMiddleware, async (req, res) => {
+  try {
+    const me = await User.findById(req.userId);
+    const toBlock = req.params.id;
+    me.blockedUsers = me.blockedUsers || [];
+    if (me.blockedUsers.includes(toBlock)) {
+      return res.status(400).json({ message: 'Já está bloqueado' });
+    }
+    me.blockedUsers.push(toBlock);
+    await me.save();
+    res.json({ message: 'Usuário bloqueado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erro ao bloquear usuário' });
+  }
+});
+
+// Desbloquear usuário
+router.post('/unblock/:id', authMiddleware, async (req, res) => {
+  try {
+    const me = await User.findById(req.userId);
+    const unblockId = req.params.id;
+    me.blockedUsers = (me.blockedUsers || []).filter(id => id.toString() !== unblockId);
+    await me.save();
+    res.json({ message: 'Usuário desbloqueado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erro ao desbloquear usuário' });
   }
 });
 
