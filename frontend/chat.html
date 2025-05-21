@@ -195,8 +195,9 @@
     const userId = localStorage.getItem('userId');
     const username = localStorage.getItem('username');
     
+    // Verifica se os dados de autenticação existem
     if (!token || !userId || !username) {
-      alert('Você precisa estar logado!');
+      console.log('Dados de autenticação não encontrados no localStorage');
       window.location.href = 'login.html';
     }
     
@@ -218,11 +219,39 @@
     // ===== Socket.IO connection =====
     const socket = io('https://whatsapp-clone-wwjc.onrender.com', {
       auth: { token },
-      path: '/socket.io'
+      path: '/socket.io',
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
     });
     
-    socket.on('connect_error', err => {
-      alert('Sessão inválida ou expirada. Faça login novamente.');
+    // Tratamento de erros de conexão
+    socket.on('connect_error', (err) => {
+      console.error('Erro de conexão:', err.message);
+      
+      // Tentar reconectar antes de redirecionar
+      setTimeout(() => {
+        if (!socket.connected) {
+          alert('Não foi possível conectar ao servidor. Por favor, tente novamente.');
+          localStorage.clear();
+          window.location.href = 'login.html';
+        }
+      }, 5000);
+    });
+    
+    // Quando a conexão é estabelecida
+    socket.on('connect', () => {
+      console.log('Conectado ao servidor Socket.IO');
+      
+      // Enviar autenticação novamente após reconexão
+      socket.emit('authenticate', { token });
+    });
+    
+    // Tratamento de autenticação falha
+    socket.on('unauthorized', (err) => {
+      console.error('Autenticação falhou:', err.message);
+      alert('Sessão expirada. Por favor, faça login novamente.');
       localStorage.clear();
       window.location.href = 'login.html';
     });
