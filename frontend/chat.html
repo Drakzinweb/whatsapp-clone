@@ -3,246 +3,359 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>tech - Chat</title>
-
-  <!-- Bootstrap CSS -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-
+  <title>Tech Chat</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Socket.IO client -->
+  <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  
   <style>
-    body, html {
-      height: 100%;
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f8f9fa;
-      display: flex;
-      flex-direction: column;
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
     }
-    #app {
-      flex: 1;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
     }
-    #usersList {
-      width: 280px;
-      background: white;
-      border-right: 1px solid #ddd;
-      overflow-y: auto;
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
     }
-    #usersList li {
-      padding: 12px 15px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      transition: background-color 0.2s;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
     }
-    #usersList li:hover,
-    #usersList li.active {
-      background-color: #e9ecef;
+    
+    /* Animation for new messages */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    #chatArea {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: white;
+    
+    .message-animation {
+      animation: fadeIn 0.3s ease-out;
     }
-    #chatHeader {
-      padding: 10px 15px;
-      border-bottom: 1px solid #ddd;
-      background: #0d6efd;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    
+    /* Typing indicator animation */
+    .typing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #6b7280;
+      animation: typingAnimation 1.4s infinite ease-in-out;
     }
-    #chatHeader #chatTitle {
-      font-weight: 600;
+    
+    .typing-dot:nth-child(1) {
+      animation-delay: 0s;
     }
-    #logoutBtn {
-      background: transparent;
-      border: none;
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
+    
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
     }
-    #messages {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #f1f3f5;
+    
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
     }
-    .message {
-      max-width: 70%;
-      padding: 10px 15px;
-      border-radius: 20px;
-      font-size: 14px;
-      word-wrap: break-word;
-      position: relative;
+    
+    @keyframes typingAnimation {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
     }
-    .message.sent {
-      background-color: #0d6efd;
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 5px;
+    
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+      #usersListContainer {
+        display: block;
+      }
+      #chatArea {
+        display: none;
+      }
+      #backToContacts {
+        display: flex;
+      }
     }
-    .message.received {
-      background-color: #e9ecef;
-      color: #212529;
-      align-self: flex-start;
-      border-bottom-left-radius: 5px;
-    }
-    .timestamp {
-      font-size: 10px;
-      color: #6c757d;
-      margin-top: 3px;
-      text-align: right;
-    }
-    #typingIndicator {
-      height: 24px;
-      padding-left: 15px;
-      font-style: italic;
-      color: #6c757d;
-    }
-    #msgForm {
-      display: flex;
-      padding: 10px 15px;
-      border-top: 1px solid #ddd;
-      background: white;
-    }
-    #msgInput {
-      flex: 1;
-      border: 1px solid #ced4da;
-      border-radius: 30px;
-      padding: 10px 15px;
-      font-size: 14px;
-      outline: none;
-    }
-    #msgInput:focus {
-      border-color: #0d6efd;
-      box-shadow: 0 0 3px #0d6efd;
-    }
-    #sendBtn {
-      margin-left: 10px;
-      background-color: #0d6efd;
-      border: none;
-      color: white;
-      padding: 0 20px;
-      border-radius: 30px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.3s ease;
-    }
-    #sendBtn:hover {
-      background-color: #084298;
+    
+    @media (min-width: 769px) {
+      #usersListContainer {
+        display: block;
+      }
+      #chatArea {
+        display: flex;
+      }
+      #backToContacts {
+        display: none;
+      }
     }
   </style>
 </head>
-<body>
-  <div id="app">
-    <!-- Sidebar: lista de usuários -->
-    <ul id="usersList" class="list-unstyled m-0 p-0"></ul>
-
-    <!-- Área de chat -->
-    <div id="chatArea" class="d-flex flex-column">
-      <div id="chatHeader">
-        <span id="chatTitle">Selecione um contato</span>
-        <button id="logoutBtn">Sair</button>
+<body class="bg-gray-100 h-screen flex flex-col">
+  <div id="app" class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <div id="usersListContainer" class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col">
+      <!-- User profile header -->
+      <div class="p-4 bg-indigo-600 text-white flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-full bg-indigo-400 flex items-center justify-center mr-3">
+            <i class="fas fa-user text-xl"></i>
+          </div>
+          <div>
+            <h2 id="currentUsername" class="font-semibold">Usuário</h2>
+            <p class="text-xs opacity-80">Online</p>
+          </div>
+        </div>
+        <button id="logoutBtn" class="text-white hover:text-gray-200 transition">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
-      <div id="messages"></div>
-      <div id="typingIndicator"></div>
-      <form id="msgForm" autocomplete="off">
-        <input
-          id="msgInput"
-          type="text"
-          placeholder="Digite uma mensagem"
-          autocomplete="off"
-        />
-        <button type="submit" id="sendBtn">Enviar</button>
-      </form>
+      
+      <!-- Search bar -->
+      <div class="p-3 border-b border-gray-200">
+        <div class="relative">
+          <input 
+            type="text"
+            placeholder="Buscar contatos..."
+            class="w-full pl-10 pr-4 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            id="searchInput"
+          />
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+      </div>
+      
+      <!-- Contacts list -->
+      <div class="flex-1 overflow-y-auto">
+        <h3 class="px-4 py-2 text-sm font-medium text-gray-500 uppercase tracking-wider">Contatos</h3>
+        <ul id="usersList" class="divide-y divide-gray-200"></ul>
+      </div>
+    </div>
+    
+    <!-- Chat area -->
+    <div id="chatArea" class="flex-1 flex flex-col bg-white">
+      <!-- Chat header with back button for mobile -->
+      <div id="chatHeader" class="p-4 bg-indigo-600 text-white flex items-center justify-between">
+        <div class="flex items-center">
+          <button id="backToContacts" class="mr-2 text-white hover:text-gray-200 transition md:hidden">
+            <i class="fas fa-arrow-left"></i>
+          </button>
+          <div class="flex items-center">
+            <div class="w-10 h-10 rounded-full bg-indigo-400 flex items-center justify-center mr-3">
+              <i class="fas fa-user text-xl"></i>
+            </div>
+            <div>
+              <h2 id="chatTitle" class="font-semibold">Selecione um contato</h2>
+              <p id="typingIndicator" class="text-xs opacity-80"></p>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button class="text-white hover:text-gray-200 transition">
+            <i class="fas fa-phone"></i>
+          </button>
+          <button class="text-white hover:text-gray-200 transition">
+            <i class="fas fa-video"></i>
+          </button>
+          <button class="text-white hover:text-gray-200 transition">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Messages container -->
+      <div id="messages" class="flex-1 overflow-y-auto p-4 bg-gray-50">
+        <div class="text-center text-gray-500 text-sm py-8">
+          Selecione um contato para começar a conversar
+        </div>
+      </div>
+      
+      <!-- Message input -->
+      <div class="p-4 border-t border-gray-200 bg-white">
+        <form id="msgForm" class="flex items-center space-x-2" autocomplete="off">
+          <button type="button" class="w-10 h-10 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition flex items-center justify-center">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <input
+            id="msgInput"
+            type="text"
+            placeholder="Digite uma mensagem..."
+            class="flex-1 px-4 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            autocomplete="off"
+          />
+          <button type="submit" id="sendBtn" class="w-10 h-10 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition flex items-center justify-center">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 
-  <!-- Socket.IO client -->
-  <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   <script>
-    // ===== Verificação de autenticação =====
+    // ===== Authentication check =====
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
-    if (!token || !userId) {
+    const username = localStorage.getItem('username');
+    
+    if (!token || !userId || !username) {
       alert('Você precisa estar logado!');
       window.location.href = 'login.html';
     }
-
+    
+    // Set current username
+    document.getElementById('currentUsername').textContent = username;
+    
     // Logout
     document.getElementById('logoutBtn').onclick = () => {
       localStorage.clear();
       window.location.href = 'login.html';
     };
-
-    // ===== Conexão Socket.IO =====
+    
+    // Back to contacts button (mobile)
+    document.getElementById('backToContacts').addEventListener('click', () => {
+      document.getElementById('usersListContainer').style.display = 'block';
+      document.getElementById('chatArea').style.display = 'none';
+    });
+    
+    // ===== Socket.IO connection =====
     const socket = io('https://whatsapp-clone-wwjc.onrender.com', {
       auth: { token },
       path: '/socket.io'
     });
-
+    
     socket.on('connect_error', err => {
       alert('Sessão inválida ou expirada. Faça login novamente.');
       localStorage.clear();
       window.location.href = 'login.html';
     });
-
-    // ===== Elementos da UI =====
+    
+    // ===== UI elements =====
     const usersList = document.getElementById('usersList');
     const chatTitle = document.getElementById('chatTitle');
     const messagesContainer = document.getElementById('messages');
     const typingIndicator = document.getElementById('typingIndicator');
     const msgForm = document.getElementById('msgForm');
     const msgInput = document.getElementById('msgInput');
-
+    const searchInput = document.getElementById('searchInput');
+    const usersListContainer = document.getElementById('usersListContainer');
+    const chatArea = document.getElementById('chatArea');
+    
     let currentChatUserId = null;
+    let currentChatUsername = null;
     let typingTimeout;
-
-    // ===== Lista de usuários online =====
+    let onlineUsers = [];
+    
+    // ===== Online users list =====
     socket.on('onlineUsers', users => {
+      onlineUsers = users.filter(user => user.id !== userId);
+      renderUsersList(onlineUsers);
+      
+      // If we have a current chat user, update their status
+      if (currentChatUserId) {
+        const user = onlineUsers.find(u => u.id === currentChatUserId);
+        if (!user) {
+          // User went offline
+          document.querySelector('#chatHeader .text-xs').textContent = 'Offline';
+        } else {
+          document.querySelector('#chatHeader .text-xs').textContent = 'Online';
+        }
+      }
+    });
+    
+    // Render users list with search filtering
+    function renderUsersList(users) {
       usersList.innerHTML = '';
+      
+      if (users.length === 0) {
+        usersList.innerHTML = `
+          <div class="p-4 text-center text-gray-500">
+            Nenhum contato online
+          </div>
+        `;
+        return;
+      }
+      
       users.forEach(user => {
-        if (user.id === userId) return;
         const li = document.createElement('li');
-        li.textContent = user.username;
+        li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer transition flex items-center';
         li.dataset.id = user.id;
-        li.addEventListener('click', () =>
-          selectUser(user.id, user.username, li)
-        );
+        
+        li.innerHTML = `
+          <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${user.username}</p>
+            <p class="text-xs text-gray-500">Online</p>
+          </div>
+          <div class="w-2 h-2 rounded-full bg-green-500"></div>
+        `;
+        
+        li.addEventListener('click', () => selectUser(user.id, user.username, li));
         usersList.appendChild(li);
       });
+    }
+    
+    // Search functionality
+    searchInput.addEventListener('input', () => {
+      const searchTerm = searchInput.value.toLowerCase();
+      const filteredUsers = onlineUsers.filter(user => 
+        user.username.toLowerCase().includes(searchTerm)
+      );
+      renderUsersList(filteredUsers);
     });
-
-    // Seleciona usuário para chat privado
+    
+    // Select user for private chat
     function selectUser(id, username, element) {
       currentChatUserId = id;
-      Array.from(usersList.children).forEach(li =>
-        li.classList.remove('active')
-      );
-      element.classList.add('active');
-      chatTitle.textContent = 'Chat com ' + username;
-      messagesContainer.innerHTML = '';
+      currentChatUsername = username;
+      
+      // Update UI
+      Array.from(usersList.children).forEach(li => {
+        li.classList.remove('bg-gray-100');
+      });
+      
+      if (element) {
+        element.classList.add('bg-gray-100');
+      }
+      
+      chatTitle.textContent = username;
+      document.querySelector('#chatHeader .text-xs').textContent = 'Online';
+      
+      // Clear and update messages container
+      messagesContainer.innerHTML = `
+        <div class="text-center text-gray-500 text-sm py-8">
+          Carregando mensagens...
+        </div>
+      `;
+      
       typingIndicator.textContent = '';
+      
+      // On mobile, show chat area and hide user list
+      if (window.innerWidth <= 768) {
+        usersListContainer.style.display = 'none';
+        chatArea.style.display = 'flex';
+      }
+      
+      // Join the chat room
       socket.emit('join', { to: id });
     }
-
-    // ===== Histórico de mensagens =====
+    
+    // ===== Message history =====
     socket.on('history', msgs => {
+      if (msgs.length === 0) {
+        messagesContainer.innerHTML = `
+          <div class="text-center text-gray-500 text-sm py-8">
+            Nenhuma mensagem ainda. Comece a conversa!
+          </div>
+        `;
+        return;
+      }
+      
       messagesContainer.innerHTML = '';
-      msgs.forEach(appendMessage);
+      msgs.forEach(msg => appendMessage(msg));
       scrollToBottom();
     });
-
-    // ===== Recebimento de nova mensagem =====
+    
+    // ===== New message received =====
     socket.on('message', msg => {
       if (
         msg.from === currentChatUserId ||
@@ -250,52 +363,152 @@
       ) {
         appendMessage(msg);
         scrollToBottom();
+        
+        // Add notification sound
+        if (msg.from !== userId) {
+          playNotificationSound();
+        }
       }
     });
-
-    // ===== Indicador de digitação =====
+    
+    // Play notification sound
+    function playNotificationSound() {
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
+      audio.volume = 0.3;
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+    
+    // ===== Typing indicator =====
     socket.on('typing', ({ from, isTyping }) => {
       if (from === currentChatUserId) {
-        typingIndicator.textContent = isTyping ? 'Digitando...' : '';
+        if (isTyping) {
+          typingIndicator.innerHTML = `
+            <span class="flex items-center">
+              ${currentChatUsername} está digitando
+              <span class="typing-dot ml-1"></span>
+              <span class="typing-dot ml-1"></span>
+              <span class="typing-dot ml-1"></span>
+            </span>
+          `;
+        } else {
+          typingIndicator.textContent = 'Online';
+        }
       }
     });
-
-    // ===== Envio de mensagem =====
+    
+    // ===== Send message =====
     msgForm.addEventListener('submit', e => {
       e.preventDefault();
       const text = msgInput.value.trim();
       if (!text || !currentChatUserId) return;
+      
       socket.emit('message', { to: currentChatUserId, text });
       msgInput.value = '';
       socket.emit('typing', { to: currentChatUserId, isTyping: false });
+      msgInput.focus();
     });
-
-    // ===== Emissão de evento de digitação =====
+    
+    // ===== Typing event emission =====
     msgInput.addEventListener('input', () => {
       if (!currentChatUserId) return;
+      
       socket.emit('typing', { to: currentChatUserId, isTyping: true });
       clearTimeout(typingTimeout);
+      
       typingTimeout = setTimeout(() => {
         socket.emit('typing', { to: currentChatUserId, isTyping: false });
       }, 1000);
     });
-
+    
     // ===== Helpers =====
     function appendMessage(msg) {
-      const div = document.createElement('div');
-      div.classList.add('message', msg.from === userId ? 'sent' : 'received');
-      div.textContent = msg.text; // usa textContent para evitar XSS
-      const time = document.createElement('div');
-      time.classList.add('timestamp');
-      time.textContent = new Date(msg.timestamp || msg.createdAt)
-        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      div.appendChild(time);
-      messagesContainer.appendChild(div);
+      // Remove the loading message if it exists
+      if (messagesContainer.children.length === 1 && 
+          messagesContainer.children[0].classList.contains('text-center')) {
+        messagesContainer.innerHTML = '';
+      }
+      
+      const isSent = msg.from === userId;
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `flex ${isSent ? 'justify-end' : 'justify-start'} mb-3 message-animation`;
+      
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = `max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isSent ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-200 text-gray-800 rounded-tl-none'}`;
+      bubbleDiv.textContent = msg.text;
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = `block text-xs mt-1 ${isSent ? 'text-indigo-200' : 'text-gray-500'}`;
+      timeSpan.textContent = formatTime(msg.timestamp || msg.createdAt);
+      
+      bubbleDiv.appendChild(timeSpan);
+      messageDiv.appendChild(bubbleDiv);
+      messagesContainer.appendChild(messageDiv);
     }
-
+    
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
     function scrollToBottom() {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+    
+    // Focus message input when chat is selected
+    msgInput.addEventListener('focus', () => {
+      if (currentChatUserId) {
+        socket.emit('typing', { to: currentChatUserId, isTyping: true });
+      }
+    });
+    
+    msgInput.addEventListener('blur', () => {
+      if (currentChatUserId) {
+        socket.emit('typing', { to: currentChatUserId, isTyping: false });
+      }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && currentChatUserId) {
+        // Clear current chat selection
+        currentChatUserId = null;
+        currentChatUsername = null;
+        chatTitle.textContent = 'Selecione um contato';
+        messagesContainer.innerHTML = `
+          <div class="text-center text-gray-500 text-sm py-8">
+            Selecione um contato para começar a conversar
+          </div>
+        `;
+        
+        // Remove active state from all users
+        Array.from(usersList.children).forEach(li => {
+          li.classList.remove('bg-gray-100');
+        });
+        
+        // On mobile, show user list and hide chat area
+        if (window.innerWidth <= 768) {
+          usersListContainer.style.display = 'block';
+          chatArea.style.display = 'none';
+        }
+      }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        // On desktop, show both panels
+        usersListContainer.style.display = 'block';
+        chatArea.style.display = 'flex';
+      } else if (!currentChatUserId) {
+        // On mobile with no chat selected, show user list
+        usersListContainer.style.display = 'block';
+        chatArea.style.display = 'none';
+      } else {
+        // On mobile with chat selected, show chat
+        usersListContainer.style.display = 'none';
+        chatArea.style.display = 'flex';
+      }
+    });
   </script>
 </body>
 </html>
