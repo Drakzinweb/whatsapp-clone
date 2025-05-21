@@ -190,25 +190,27 @@
   </div>
 
   <script>
-    // ===== Authentication check =====
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    
-    // Verifica se os dados de autenticação existem
-    if (!token || !userId || !username) {
-      console.log('Dados de autenticação não encontrados no localStorage');
-      window.location.href = 'login.html';
-    }
-    
-    // Set current username
+   // ===== Authentication check =====
+  const token    = localStorage.getItem('token');
+  const userId   = localStorage.getItem('userId');
+  const username = localStorage.getItem('username');
+
+  // Se faltar algum dado de auth, redireciona
+  if (!token || !userId || !username) {
+    window.location.href = 'login.html';
     document.getElementById('currentUsername').textContent = username;
-    
-    // Logout
-    document.getElementById('logoutBtn').onclick = () => {
-      localStorage.clear();
-      window.location.href = 'login.html';
-    };
+
+  }
+
+  // **AQUI** você já tem a variável `username` válida:
+  document.getElementById('currentUsername').textContent = username;
+
+  // Logout
+  document.getElementById('logoutBtn').onclick = () => {
+    localStorage.clear();
+    window.location.href = 'login.html';
+  };
+
     
     // Back to contacts button (mobile)
     document.getElementById('backToContacts').addEventListener('click', () => {
