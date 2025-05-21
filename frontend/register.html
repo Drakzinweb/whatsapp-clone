@@ -1,6 +1,12 @@
+<!-- register.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Registrar</title><link rel="stylesheet" href="css/style.css"/></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Registrar</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
 <body>
   <div class="form-container">
     <h2>Registrar</h2>
@@ -12,18 +18,27 @@
     <p>Já tem conta? <a href="login.html">Entrar</a></p>
   </div>
   <script>
-    const API = '';
-    document.getElementById('registerForm').onsubmit = async e=>{
+    const API = 'https://whatsapp-clone-wwjc.onrender.com/api/auth'; // ajuste sua URL
+    document.getElementById('registerForm').onsubmit = async e => {
       e.preventDefault();
-      const res = await fetch(`${API}/api/auth/register`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username:e.target.username.value,password:e.target.password.value})
+      const res = await fetch(`${API}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: e.target.username.value,
+          password: e.target.password.value
+        })
       });
-      if(!res.ok){alert((await res.json()).message);return;}
-      localStorage.setItem('token',(await res.json()).token);
-      location.href='chat.html';
-    }
+      const data = await res.json();
+      if (!res.ok) {
+        return alert(data.message);
+      }
+      // SALVA token e userId no localStorage
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userId', data.userId);
+      // redireciona para o chat
+      window.location.href = 'chat.html';
+    };
   </script>
 </body>
 </html>

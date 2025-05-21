@@ -8,59 +8,55 @@ const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 
 const authRoutes = require('./routes/auth');
-const Message = require('./models/Message');
 const User = require('./models/User');
+const Message = require('./models/Message');
 
 const app = express();
 const server = http.createServer(app);
 
 const FRONTEND_ORIGIN = 'https://whatsapp-clone-wwjc.onrender.com';
 
-// CORS Config
+// CORS
 app.use(cors({
   origin: FRONTEND_ORIGIN,
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET','POST','OPTIONS']
 }));
-
 app.use(express.json());
 
-// Servir frontend estático
+// Static frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
-
-// Rotas Auth
-app.use('/api/auth', authRoutes);
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'login.html'));
 });
 
-// Conexão MongoDB
+// Auth routes
+app.use('/api/auth', authRoutes);
+
+// MongoDB connect
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('✅ MongoDB conectado'))
-  .catch(err => {
-    console.error('Erro MongoDB:', err);
-    process.exit(1);
-  });
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB conectado'))
+.catch(err => { console.error('❌ Erro MongoDB:', err); process.exit(1); });
 
-// Socket.IO com CORS
+// Socket.IO
 const io = new Server(server, {
   cors: {
     origin: FRONTEND_ORIGIN,
-    methods: ['GET', 'POST'],
-    credentials: true,
+    methods: ['GET','POST'],
+    credentials: true
   },
+  path: '/socket.io'
 });
 
-// Middleware autenticação token para socket
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error('Token não fornecido'));
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id;
+    const { id } = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = id;
     next();
   } catch {
     next(new Error('Token inválido'));
@@ -69,73 +65,55 @@ io.use((socket, next) => {
 
 const onlineUsers = new Map();
 
-io.on('connection', async (socket) => {
-  console.log(`Usuário conectado: ${socket.userId}`);
-  onlineUsers.set(socket.userId, socket.id);
-
-  // Emitir usuários online com username
-  const usersOnline = [];
-  for (const userId of onlineUsers.keys()) {
-    const user = await User.findById(userId);
-    if (user) usersOnline.push({ id: user._id, username: user.username });
+async function emitOnline() {
+  const list = [];
+  for (let [userId] of onlineUsers) {
+    const user = await User.findById(userId).select('username');
+    if (user) list.push({ id: userId, username: user.username });
   }
-  io.emit('onlineUsers', usersOnline);
+  io.emit('onlineUsers', list);
+}
+
+io.on('connection', socket => {
+  onlineUsers.set(socket.userId, socket.id);
+  emitOnline();
 
   socket.on('join', async ({ to }) => {
     const room = [socket.userId, to].sort().join('_');
     socket.join(room);
-
-    // Buscar histórico da sala do MongoDB
-    const messages = await Message.find({
+    const history = await Message.find({
       $or: [
         { from: socket.userId, to },
         { from: to, to: socket.userId }
       ]
-    }).sort({ createdAt: 1 });
-
-    socket.emit('history', messages);
+    }).sort('createdAt');
+    socket.emit('history', history);
   });
 
   socket.on('message', async ({ to, text }) => {
-    const msg = new Message({
-      from: socket.userId,
-      to,
-      text,
-      createdAt: new Date(),
-    });
-    await msg.save();
-
+    if (!to || !text) return;
+    const msg = await Message.create({ from: socket.userId, to, text });
     const room = [socket.userId, to].sort().join('_');
     io.to(room).emit('message', {
-      from: msg.from,
-      to: msg.to,
+      from: msg.from.toString(),
+      to: msg.to.toString(),
       text: msg.text,
-      timestamp: msg.createdAt,
+      timestamp: msg.createdAt
     });
   });
 
   socket.on('typing', ({ to, isTyping }) => {
-    const toSocketId = onlineUsers.get(to);
-    if (toSocketId) {
-      io.to(toSocketId).emit('typing', { from: socket.userId, isTyping });
+    const target = onlineUsers.get(to);
+    if (target) {
+      io.to(target).emit('typing', { from: socket.userId, isTyping });
     }
   });
 
-  socket.on('disconnect', async () => {
-    console.log(`Usuário desconectado: ${socket.userId}`);
+  socket.on('disconnect', () => {
     onlineUsers.delete(socket.userId);
-
-    // Atualiza lista de online com username
-    const usersOnline = [];
-    for (const userId of onlineUsers.keys()) {
-      const user = await User.findById(userId);
-      if (user) usersOnline.push({ id: user._id, username: user.username });
-    }
-    io.emit('onlineUsers', usersOnline);
+    emitOnline();
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Server rodando na porta ${PORT}`));
