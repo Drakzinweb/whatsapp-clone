@@ -1,4 +1,5 @@
-const socketUrl = 'https://whatsapp-clone-oz95.onrender.com'; // ou http://localhost:3000
+const socketUrl = 'https://whatsapp-clone-oz95.onrender.com'; // backend real
+
 const token = localStorage.getItem('token');
 if (!token) {
   alert('Usuário não autenticado! Faça login.');
@@ -16,19 +17,16 @@ const msgForm = document.getElementById('msgForm');
 const msgInput = document.getElementById('msgInput');
 
 let currentChatUser = null;
-let currentChatUsername = '';
 
 socket.on('onlineUsers', (users) => {
   usersList.innerHTML = '';
-  const myId = getUserIdFromToken(token);
-
-  users.forEach(user => {
-    if (user.id === myId) return;
+  users.forEach(userId => {
+    if (userId === getUserIdFromToken(token)) return;
 
     const li = document.createElement('li');
-    li.textContent = user.username;
+    li.textContent = `Usuário: ${userId}`;
     li.classList.add('cursor-pointer', 'p-2', 'rounded', 'hover:bg-blue-100');
-    li.onclick = () => startChat(user.id, user.username);
+    li.onclick = () => startChat(userId);
     usersList.appendChild(li);
   });
 });
@@ -39,11 +37,9 @@ socket.on('history', (msgs) => {
 });
 
 socket.on('message', (msg) => {
-  const myId = getUserIdFromToken(token);
-  if (
-    (msg.from === currentChatUser && msg.to === myId) ||
-    (msg.to === currentChatUser && msg.from === myId)
-  ) {
+  const userId = getUserIdFromToken(token);
+  if ((msg.from === currentChatUser && msg.to === userId) ||
+      (msg.to === currentChatUser && msg.from === userId)) {
     renderMessage(msg);
   }
 });
@@ -57,10 +53,9 @@ msgForm.addEventListener('submit', e => {
   msgInput.value = '';
 });
 
-function startChat(userId, username) {
+function startChat(userId) {
   currentChatUser = userId;
-  currentChatUsername = username;
-  chatWith.textContent = `Conversando com: ${username}`;
+  chatWith.textContent = `Usuário: ${userId}`;
   messagesContainer.innerHTML = '';
   socket.emit('join', { to: userId });
 }
@@ -68,9 +63,9 @@ function startChat(userId, username) {
 function renderMessage(msg) {
   const div = document.createElement('div');
   const isMe = msg.from === getUserIdFromToken(token);
-
-  div.classList.add('max-w-xs', 'p-2', 'rounded', 'fadeIn', isMe ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 text-black self-start');
-  div.textContent = `${isMe ? 'Você' : msg.senderName}: ${msg.text} (${new Date(msg.timestamp).toLocaleTimeString()})`;
+  div.classList.add('max-w-xs', 'p-2', 'rounded',
+    isMe ? 'bg-blue-500 text-white self-end' : 'bg-gray-200 text-gray-800 self-start');
+  div.textContent = `${msg.text} (${new Date(msg.timestamp).toLocaleTimeString()})`;
 
   messagesContainer.appendChild(div);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -78,16 +73,10 @@ function renderMessage(msg) {
 
 function getUserIdFromToken(token) {
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload).id;
-  } catch (err) {
-    console.error('Erro ao decodificar token:', err);
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded.id;
+  } catch {
     return null;
   }
 }
