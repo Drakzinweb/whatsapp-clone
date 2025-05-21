@@ -6,215 +6,722 @@
   <title>Configurações | Tech Chat</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.3s ease-in-out',
+            'slide-up': 'slideUp 0.3s ease-out',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            slideUp: {
+              '0%': { transform: 'translateY(10px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            }
+          }
+        }
+      }
+    }
+  </script>
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Custom CSS -->
+  <style>
+    .btn-save {
+      transition: all 0.2s ease;
+      transform: translateY(0);
+    }
+    .btn-save:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .btn-save:active {
+      transform: translateY(0);
+    }
+    .toggle-checkbox:checked {
+      @apply right-0 border-primary-600;
+      right: 0;
+      border-color: #0ea5e9;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      @apply bg-primary-600;
+    }
+    .avatar-upload {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    .avatar-upload input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    .avatar-preview {
+      transition: all 0.3s ease;
+    }
+    .avatar-preview:hover {
+      filter: brightness(0.9);
+      transform: scale(1.05);
+    }
+    .confirmation-modal {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .confirmation-content {
+      animation: slideUp 0.3s ease-out;
+    }
+    .blocked-user-item {
+      transition: all 0.2s ease;
+    }
+    .blocked-user-item:hover {
+      transform: translateX(4px);
+      background-color: #f8fafc;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-
+<body class="bg-gray-50 min-h-screen flex flex-col transition-colors duration-300">
   <!-- Header -->
-  <header class="bg-indigo-600 text-white p-4 flex items-center justify-between">
-    <h1 class="text-xl font-semibold">Configurações</h1>
-    <button id="backBtn" class="text-white hover:text-gray-200">
-      <i class="fas fa-arrow-left"></i> Voltar
-    </button>
+  <header class="bg-primary-600 text-white p-4 flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-3">
+      <button id="backBtn" class="text-white hover:text-primary-100 transition-colors">
+        <i class="fas fa-arrow-left text-lg"></i>
+      </button>
+      <h1 class="text-xl font-semibold">Configurações</h1>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span id="usernameDisplay" class="text-sm font-medium"></span>
+      <div class="w-8 h-8 rounded-full bg-primary-700 flex items-center justify-center">
+        <i class="fas fa-user text-sm"></i>
+      </div>
+    </div>
   </header>
 
   <!-- Container -->
-  <main class="flex-1 overflow-y-auto p-6">
-    <!-- Seção: Perfil -->
-    <section class="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-user mr-2"></i> Meu Perfil</h2>
+  <main class="flex-1 overflow-y-auto p-4 md:p-6">
+    <!-- Avatar Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 mb-6 animate-fade-in">
+      <div class="flex flex-col items-center">
+        <div class="avatar-upload mb-4">
+          <div class="avatar-preview w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden relative">
+            <img id="avatarPreview" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+            <i class="fas fa-user text-4xl text-primary-600"></i>
+            <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+              <i class="fas fa-camera text-white text-xl"></i>
+            </div>
+          </div>
+          <input type="file" id="avatarInput" accept="image/*" class="hidden">
+        </div>
+        <button id="changeAvatarBtn" class="text-primary-600 hover:text-primary-800 text-sm font-medium transition-colors">
+          Alterar foto de perfil
+        </button>
+      </div>
+    </section>
+
+    <!-- Profile Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 mb-6 animate-slide-up">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-user-circle text-primary-600 mr-2"></i>
+        <span>Meu Perfil</span>
+      </h2>
       <form id="profileForm" class="space-y-4">
         <div>
-          <label for="usernameInput" class="block text-sm font-medium text-gray-700">Usuário</label>
-          <input id="usernameInput" type="text" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+          <label for="usernameInput" class="block text-sm font-medium text-gray-700 mb-1">Nome de usuário</label>
+          <input id="usernameInput" type="text" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 transition" />
         </div>
-        <button type="submit" class="btn-save w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
-          Salvar Perfil
+        <div>
+          <label for="statusInput" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <input id="statusInput" type="text" placeholder="Digite seu status" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 transition" />
+        </div>
+        <button type="submit" class="btn-save w-full bg-primary-600 text-white py-2.5 rounded-lg hover:bg-primary-700 transition-all font-medium flex items-center justify-center">
+          <i class="fas fa-save mr-2"></i>
+          Salvar Alterações
         </button>
       </form>
     </section>
 
-    <!-- Seção: Alterar Senha -->
-    <section class="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-lock mr-2"></i> Alterar Senha</h2>
+    <!-- Change Password Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 mb-6 animate-slide-up">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-lock text-primary-600 mr-2"></i>
+        <span>Segurança</span>
+      </h2>
       <form id="passwordForm" class="space-y-4">
         <div>
-          <label for="currentPwd" class="block text-sm font-medium text-gray-700">Senha Atual</label>
-          <input id="currentPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+          <label for="currentPwd" class="block text-sm font-medium text-gray-700 mb-1">Senha Atual</label>
+          <div class="relative">
+            <input id="currentPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 transition pr-10" />
+            <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600" onclick="togglePasswordVisibility('currentPwd', this)">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
         </div>
         <div>
-          <label for="newPwd" class="block text-sm font-medium text-gray-700">Nova Senha</label>
-          <input id="newPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+          <label for="newPwd" class="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
+          <div class="relative">
+            <input id="newPwd" type="password" class="mt-1 w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 transition pr-10" />
+            <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600" onclick="togglePasswordVisibility('newPwd', this)">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">A senha deve conter pelo menos 8 caracteres</p>
         </div>
-        <button type="submit" class="btn-save w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">
-          Atualizar Senha
+        <button type="submit" class="btn-save w-full bg-primary-600 text-white py-2.5 rounded-lg hover:bg-primary-700 transition-all font-medium flex items-center justify-center">
+          <i class="fas fa-key mr-2"></i>
+          Alterar Senha
         </button>
       </form>
     </section>
 
-    <!-- Seção: Tema -->
-    <section class="bg-white rounded-lg shadow p-6 mb-6 flex items-center justify-between">
-      <div class="flex items-center">
-        <i class="fas fa-adjust text-xl mr-4"></i>
-        <div>
-          <h2 class="text-lg font-semibold">Tema</h2>
-          <p class="text-sm text-gray-600">Claro / Escuro</p>
+    <!-- App Settings Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 mb-6 animate-slide-up">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-cog text-primary-600 mr-2"></i>
+        <span>Configurações do App</span>
+      </h2>
+      
+      <div class="space-y-4">
+        <!-- Theme Toggle -->
+        <div class="flex items-center justify-between py-2">
+          <div class="flex items-center">
+            <i class="fas fa-moon text-primary-600 mr-3 text-lg"></i>
+            <div>
+              <h3 class="font-medium">Modo Escuro</h3>
+              <p class="text-sm text-gray-500">Ativar tema escuro</p>
+            </div>
+          </div>
+          <div class="relative inline-block w-10 mr-2 align-middle select-none">
+            <input type="checkbox" id="themeToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-200"/>
+            <label for="themeToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-all duration-200"></label>
+          </div>
+        </div>
+        
+        <!-- Notifications Toggle -->
+        <div class="flex items-center justify-between py-2">
+          <div class="flex items-center">
+            <i class="fas fa-bell text-primary-600 mr-3 text-lg"></i>
+            <div>
+              <h3 class="font-medium">Notificações</h3>
+              <p class="text-sm text-gray-500">Ativar notificações</p>
+            </div>
+          </div>
+          <div class="relative inline-block w-10 mr-2 align-middle select-none">
+            <input type="checkbox" id="notificationsToggle" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-200"/>
+            <label for="notificationsToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-primary-600 cursor-pointer transition-all duration-200"></label>
+          </div>
+        </div>
+        
+        <!-- Sounds Toggle -->
+        <div class="flex items-center justify-between py-2">
+          <div class="flex items-center">
+            <i class="fas fa-volume-up text-primary-600 mr-3 text-lg"></i>
+            <div>
+              <h3 class="font-medium">Sons</h3>
+              <p class="text-sm text-gray-500">Ativar sons do app</p>
+            </div>
+          </div>
+          <div class="relative inline-block w-10 mr-2 align-middle select-none">
+            <input type="checkbox" id="soundsToggle" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-200"/>
+            <label for="soundsToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-primary-600 cursor-pointer transition-all duration-200"></label>
+          </div>
         </div>
       </div>
-      <button id="themeToggle" class="w-16 h-8 bg-gray-200 rounded-full flex items-center p-1 transition">
-        <span class="dot w-6 h-6 bg-white rounded-full shadow"></span>
-      </button>
     </section>
 
-    <!-- Seção: Usuários Bloqueados -->
-    <section class="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-ban mr-2"></i> Usuários Bloqueados</h2>
-      <ul id="blockedList" class="space-y-3">
-        <!-- preenchido via JS -->
-      </ul>
+    <!-- Blocked Users Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 mb-6 animate-slide-up">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center">
+          <i class="fas fa-user-slash text-primary-600 mr-2"></i>
+          <span>Usuários Bloqueados</span>
+        </h2>
+        <span id="blockedCount" class="bg-primary-100 text-primary-800 text-xs font-medium px-2.5 py-0.5 rounded-full">0</span>
+      </div>
+      
+      <div id="blockedListContainer" class="space-y-2">
+        <div id="emptyBlockedList" class="text-center py-6">
+          <i class="fas fa-users-slash text-gray-300 text-4xl mb-2"></i>
+          <p class="text-gray-500">Nenhum usuário bloqueado</p>
+        </div>
+        <ul id="blockedList" class="space-y-2 hidden">
+          <!-- Filled via JS -->
+        </ul>
+      </div>
     </section>
 
-    <!-- Seção: Apagar Conta -->
-    <section class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-lg font-semibold mb-4"><i class="fas fa-trash-alt mr-2"></i> Apagar Conta</h2>
-      <button id="deleteAccount" class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
-        Excluir Minha Conta
-      </button>
+    <!-- Danger Zone Section -->
+    <section class="bg-white rounded-xl shadow-sm p-6 animate-slide-up border border-red-100">
+      <h2 class="text-lg font-semibold mb-4 flex items-center text-red-600">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <span>Zona de Perigo</span>
+      </h2>
+      
+      <div class="space-y-4">
+        <div class="p-3 bg-red-50 rounded-lg">
+          <h3 class="font-medium text-red-700 mb-1">Exportar Dados</h3>
+          <p class="text-sm text-red-600 mb-2">Baixe uma cópia dos seus dados do Tech Chat</p>
+          <button class="text-sm text-red-600 hover:text-red-800 font-medium flex items-center">
+            <i class="fas fa-file-export mr-2"></i>
+            Solicitar Exportação
+          </button>
+        </div>
+        
+        <div class="p-3 bg-red-50 rounded-lg">
+          <h3 class="font-medium text-red-700 mb-1">Apagar Conta</h3>
+          <p class="text-sm text-red-600 mb-2">Esta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente.</p>
+          <button id="deleteAccount" class="text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium flex items-center transition-colors">
+            <i class="fas fa-trash-alt mr-2"></i>
+            Excluir Minha Conta
+          </button>
+        </div>
+      </div>
     </section>
   </main>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden confirmation-modal">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 confirmation-content">
+      <div class="flex items-start mb-4">
+        <div class="flex-shrink-0">
+          <i class="fas fa-exclamation-circle text-red-500 text-2xl"></i>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Confirmar ação</h3>
+          <div class="mt-2">
+            <p class="text-sm text-gray-500" id="modalMessage">Tem certeza que deseja continuar?</p>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end space-x-3">
+        <button type="button" id="modalCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" id="modalConfirm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Toast -->
+  <div id="successToast" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center hidden animate-slide-up">
+    <i class="fas fa-check-circle mr-2"></i>
+    <span id="toastMessage">Operação realizada com sucesso!</span>
+  </div>
 
   <script>
     const API = 'https://whatsapp-clone-wwjc.onrender.com/api';
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
+    let currentUsername = '';
 
-    // Voltar ao chat
-    document.getElementById('backBtn').onclick = () => window.location.href = 'chat.html';
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load user data
+      loadProfile();
+      loadBlocked();
+      
+      // Set initial theme
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+      
+      // Set username in header
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) {
+        document.getElementById('usernameDisplay').textContent = storedUsername;
+      }
+    });
 
-    // Carrega perfil atual
-    async function loadProfile() {
-      const res = await fetch(`${API}/auth/verify`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) return;
-      const { username } = await res.json();
-      document.getElementById('usernameInput').value = username;
+    // Back button
+    document.getElementById('backBtn').onclick = () => {
+      window.location.href = 'chat.html';
+    };
+
+    // Toggle password visibility
+    function togglePasswordVisibility(inputId, button) {
+      const input = document.getElementById(inputId);
+      const icon = button.querySelector('i');
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
     }
-    loadProfile();
 
-    // Salvar perfil
+    // Load profile data
+    async function loadProfile() {
+      try {
+        const res = await fetch(`${API}/auth/verify`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!res.ok) throw new Error('Failed to load profile');
+        
+        const { username, status } = await res.json();
+        currentUsername = username;
+        
+        document.getElementById('usernameInput').value = username;
+        document.getElementById('statusInput').value = status || '';
+        document.getElementById('usernameDisplay').textContent = username;
+        
+        // Load avatar if exists
+        const avatarRes = await fetch(`${API}/users/${userId}/avatar`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (avatarRes.ok) {
+          const avatarBlob = await avatarRes.blob();
+          const avatarUrl = URL.createObjectURL(avatarBlob);
+          const avatarPreview = document.getElementById('avatarPreview');
+          avatarPreview.src = avatarUrl;
+          avatarPreview.classList.remove('hidden');
+          avatarPreview.nextElementSibling.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    }
+
+    // Save profile
     document.getElementById('profileForm').onsubmit = async e => {
       e.preventDefault();
+      
       const newUsername = document.getElementById('usernameInput').value.trim();
-      if (!newUsername) return alert('Digite um nome de usuário.');
-      const res = await fetch(`${API}/users/${userId}/update-username`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ username: newUsername })
-      });
-      if (res.ok) {
-        alert('Perfil atualizado com sucesso.');
-        localStorage.setItem('username', newUsername);
-      } else {
-        const { message } = await res.json();
-        alert('Erro: ' + message);
+      const newStatus = document.getElementById('statusInput').value.trim();
+      
+      if (!newUsername) {
+        showToast('Digite um nome de usuário válido', 'error');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API}/users/${userId}/update-profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            username: newUsername,
+            status: newStatus
+          })
+        });
+        
+        if (res.ok) {
+          showToast('Perfil atualizado com sucesso!');
+          currentUsername = newUsername;
+          localStorage.setItem('username', newUsername);
+          document.getElementById('usernameDisplay').textContent = newUsername;
+        } else {
+          const { message } = await res.json();
+          showToast(message || 'Erro ao atualizar perfil', 'error');
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        showToast('Erro ao atualizar perfil', 'error');
       }
     };
 
-    // Alterar senha
+    // Change password
     document.getElementById('passwordForm').onsubmit = async e => {
       e.preventDefault();
+      
       const currentPwd = document.getElementById('currentPwd').value;
       const newPwd = document.getElementById('newPwd').value;
-      if (!currentPwd || !newPwd) return alert('Preencha ambas as senhas.');
-      const res = await fetch(`${API}/users/${userId}/change-password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd })
-      });
-      if (res.ok) {
-        alert('Senha atualizada com sucesso.');
-        document.getElementById('currentPwd').value = '';
-        document.getElementById('newPwd').value = '';
-      } else {
-        const { message } = await res.json();
-        alert('Erro: ' + message);
+      
+      if (!currentPwd || !newPwd) {
+        showToast('Preencha ambos os campos de senha', 'error');
+        return;
+      }
+      
+      if (newPwd.length < 8) {
+        showToast('A senha deve ter pelo menos 8 caracteres', 'error');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API}/users/${userId}/change-password`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            currentPassword: currentPwd, 
+            newPassword: newPwd 
+          })
+        });
+        
+        if (res.ok) {
+          showToast('Senha alterada com sucesso!');
+          document.getElementById('currentPwd').value = '';
+          document.getElementById('newPwd').value = '';
+        } else {
+          const { message } = await res.json();
+          showToast(message || 'Erro ao alterar senha', 'error');
+        }
+      } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('Erro ao alterar senha', 'error');
       }
     };
 
-    // Tema claro/escuro
+    // Theme toggle
     const themeToggle = document.getElementById('themeToggle');
-    const dot = themeToggle.querySelector('.dot');
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    themeToggle.onclick = () => {
-      const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-      setTheme(next);
-    };
+    themeToggle.addEventListener('change', () => {
+      const nextTheme = themeToggle.checked ? 'dark' : 'light';
+      setTheme(nextTheme);
+    });
+
     function setTheme(name) {
       if (name === 'dark') {
         document.documentElement.classList.add('dark');
-        dot.classList.add('translate-x-8');
+        document.body.classList.add('bg-gray-900');
+        document.body.classList.remove('bg-gray-50');
+        themeToggle.checked = true;
       } else {
         document.documentElement.classList.remove('dark');
-        dot.classList.remove('translate-x-8');
+        document.body.classList.remove('bg-gray-900');
+        document.body.classList.add('bg-gray-50');
+        themeToggle.checked = false;
       }
       localStorage.setItem('theme', name);
     }
 
-    // Lista de bloqueados
-    async function loadBlocked() {
-      const res = await fetch(`${API}/users/me/blocked`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const list = res.ok ? await res.json() : [];
-      const ul = document.getElementById('blockedList');
-      ul.innerHTML = '';
-      list.forEach(u => {
-        const li = document.createElement('li');
-        li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
-        li.innerHTML = `
-          <span>${u.username}</span>
-          <button data-id="${u._id}" class="text-indigo-600 hover:underline">Desbloquear</button>
-        `;
-        ul.appendChild(li);
-      });
-      ul.querySelectorAll('button').forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.dataset.id;
-          await fetch(`${API}/users/${id}/unblock`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          loadBlocked();
-        };
-      });
-    }
-    loadBlocked();
+    // Change avatar
+    document.getElementById('changeAvatarBtn').addEventListener('click', () => {
+      document.getElementById('avatarInput').click();
+    });
 
-    // Excluir conta
-    document.getElementById('deleteAccount').onclick = async () => {
-      if (!confirm('Tem certeza que deseja excluir sua conta? Essa ação não pode ser desfeita.')) return;
-      const res = await fetch(`${API}/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        alert('Conta excluída.');
-        localStorage.clear();
-        window.location.href = 'login.html';
-      } else {
-        const { message } = await res.json();
-        alert('Erro: ' + message);
+    document.getElementById('avatarInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!file.type.match('image.*')) {
+        showToast('Por favor, selecione uma imagem válida', 'error');
+        return;
       }
+      
+      if (file.size > 2 * 1024 * 1024) { // 2MB
+        showToast('A imagem deve ter menos de 2MB', 'error');
+        return;
+      }
+      
+      // Preview image
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const avatarPreview = document.getElementById('avatarPreview');
+        avatarPreview.src = event.target.result;
+        avatarPreview.classList.remove('hidden');
+        avatarPreview.nextElementSibling.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+      
+      // Upload to server
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      try {
+        const res = await fetch(`${API}/users/${userId}/avatar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        if (res.ok) {
+          showToast('Foto de perfil atualizada!');
+        } else {
+          throw new Error('Failed to upload avatar');
+        }
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        showToast('Erro ao atualizar foto de perfil', 'error');
+      }
+    });
+
+    // Blocked users list
+    async function loadBlocked() {
+      try {
+        const res = await fetch(`${API}/users/me/blocked`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const list = res.ok ? await res.json() : [];
+        const ul = document.getElementById('blockedList');
+        const emptyBlocked = document.getElementById('emptyBlockedList');
+        
+        if (list.length > 0) {
+          ul.innerHTML = '';
+          list.forEach(u => {
+            const li = document.createElement('li');
+            li.className = 'blocked-user-item flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100';
+            li.innerHTML = `
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                  <i class="fas fa-user text-primary-600 text-sm"></i>
+                </div>
+                <span class="font-medium">${u.username}</span>
+              </div>
+              <button data-id="${u._id}" class="text-primary-600 hover:text-primary-800 text-sm font-medium transition-colors">
+                Desbloquear
+              </button>
+            `;
+            ul.appendChild(li);
+          });
+          
+          ul.classList.remove('hidden');
+          emptyBlocked.classList.add('hidden');
+          document.getElementById('blockedCount').textContent = list.length;
+        } else {
+          ul.classList.add('hidden');
+          emptyBlocked.classList.remove('hidden');
+          document.getElementById('blockedCount').textContent = '0';
+        }
+        
+        // Add event listeners to unblock buttons
+        ul.querySelectorAll('button').forEach(btn => {
+          btn.onclick = async () => {
+            const id = btn.dataset.id;
+            showConfirmation(
+              'Desbloquear usuário',
+              `Tem certeza que deseja desbloquear ${btn.parentNode.querySelector('span').textContent}?`,
+              async () => {
+                try {
+                  await fetch(`${API}/users/${id}/unblock`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  loadBlocked();
+                  showToast('Usuário desbloqueado com sucesso');
+                } catch (error) {
+                  console.error('Error unblocking user:', error);
+                  showToast('Erro ao desbloquear usuário', 'error');
+                }
+              }
+            );
+          };
+        });
+      } catch (error) {
+        console.error('Error loading blocked users:', error);
+        showToast('Erro ao carregar lista de bloqueados', 'error');
+      }
+    }
+
+    // Delete account
+    document.getElementById('deleteAccount').onclick = () => {
+      showConfirmation(
+        'Excluir conta permanentemente',
+        `Tem certeza que deseja excluir sua conta ${currentUsername}? Todos os seus dados serão removidos e essa ação não pode ser desfeita.`,
+        async () => {
+          try {
+            const res = await fetch(`${API}/users/${userId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+              localStorage.clear();
+              showToast('Conta excluída com sucesso');
+              setTimeout(() => {
+                window.location.href = 'login.html';
+              }, 1500);
+            } else {
+              const { message } = await res.json();
+              throw new Error(message || 'Failed to delete account');
+            }
+          } catch (error) {
+            console.error('Error deleting account:', error);
+            showToast('Erro ao excluir conta', 'error');
+          }
+        }
+      );
     };
+
+    // Confirmation modal
+    function showConfirmation(title, message, onConfirm) {
+      const modal = document.getElementById('confirmationModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalMessage = document.getElementById('modalMessage');
+      const modalConfirm = document.getElementById('modalConfirm');
+      const modalCancel = document.getElementById('modalCancel');
+      
+      modalTitle.textContent = title;
+      modalMessage.textContent = message;
+      
+      // Set up event listeners
+      const confirmHandler = () => {
+        modal.classList.add('hidden');
+        onConfirm();
+        modalConfirm.removeEventListener('click', confirmHandler);
+      };
+      
+      const cancelHandler = () => {
+        modal.classList.add('hidden');
+        modalCancel.removeEventListener('click', cancelHandler);
+      };
+      
+      modalConfirm.addEventListener('click', confirmHandler);
+      modalCancel.addEventListener('click', cancelHandler);
+      
+      // Show modal
+      modal.classList.remove('hidden');
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('successToast');
+      const toastMessage = document.getElementById('toastMessage');
+      
+      toastMessage.textContent = message;
+      
+      // Set color based on type
+      if (type === 'error') {
+        toast.classList.remove('bg-green-500');
+        toast.classList.add('bg-red-500');
+        toast.querySelector('i').className = 'fas fa-exclamation-circle mr-2';
+      } else {
+        toast.classList.remove('bg-red-500');
+        toast.classList.add('bg-green-500');
+        toast.querySelector('i').className = 'fas fa-check-circle mr-2';
+      }
+      
+      // Show toast
+      toast.classList.remove('hidden');
+      
+      // Hide after 3 seconds
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
   </script>
 </body>
 </html>
