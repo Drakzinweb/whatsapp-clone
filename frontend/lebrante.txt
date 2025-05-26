@@ -629,6 +629,7 @@ app.use(
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/auth', require('./routes/auth'));
 
 // Static frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
