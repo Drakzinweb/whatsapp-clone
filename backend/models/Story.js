@@ -25,13 +25,10 @@ const storySchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // expira em 24h
   }
 }, {
   timestamps: true
 });
 
 module.exports = mongoose.model('Story', storySchema);
-  
-
-//TESTE...//
