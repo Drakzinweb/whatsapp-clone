@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -8,12 +9,24 @@ const router = express.Router();
 // Registro
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Usuário e senha são obrigatórios' });
+  }
+
   try {
-    if (await User.findOne({ username })) {
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
       return res.status(400).json({ message: 'Usuário já existe' });
     }
-    const user = await User.create({ username, password });
+
+    // Hash da senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await User.create({ username, password: hashedPassword });
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
     res.status(201).json({ token, userId: user._id, username: user.username });
   } catch (err) {
     console.error(err);
@@ -24,12 +37,25 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Usuário e senha são obrigatórios' });
+  }
+
   try {
     const user = await User.findOne({ username });
-    if (!user || !(await user.matchPassword(password))) {
+    if (!user) {
       return res.status(400).json({ message: 'Credenciais inválidas' });
     }
+
+    // Verifica a senha com bcrypt
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Credenciais inválidas' });
+    }
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
     res.json({ token, userId: user._id, username: user.username });
   } catch (err) {
     console.error(err);
