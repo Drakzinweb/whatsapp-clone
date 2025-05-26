@@ -543,3 +543,37 @@
   </script>
 </body>
 </html>
+
+
+
+/
+├── backend/
+│   ├── config/
+│   │   └── db.js              # Conexão com MongoDB
+│   ├── middleware/
+│   │   └── authMiddleware.js  # Middleware para verificar JWT
+│   ├── models/
+│   │   ├── Message.js
+│   │   ├── Story.js
+│   │   └── User.js
+│   ├── routes/
+│   │   ├── auth.js            # Rotas de login e registro
+│   │   └── users.js           # Ex: bloquear usuários, buscar infos
+│   └── server.js              # Servidor Express principal
+│
+├── frontend/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   └── main.js
+│   ├── chat.html
+│   ├── config.html
+│   ├── index.html
+│   ├── login.html
+│   └── register.html
+│
+├── node_modules/
+├── .env                       # MONGO_URI, JWT_SECRET etc
+├── package.json
+├── package-lock.json
+└── README.txt
