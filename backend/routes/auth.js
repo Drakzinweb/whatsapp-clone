@@ -1,7 +1,7 @@
-const express  = require('express');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const User     = require('../models/User');
+const express = require('express');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const User    = require('../models/User');
 
 const router = express.Router();
 
@@ -14,10 +14,9 @@ router.post('/register', async (req, res) => {
     }
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hash });
-    return res.status(201).json({ message: 'Usuário criado', userId: user._id });
+    res.status(201).json({ message: 'Usuário criado', userId: user._id });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Erro no servidor' });
   }
 });
 
@@ -26,18 +25,13 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user || !await bcrypt.compare(password, user.password)) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
-    const token = jwt.sign(
-      { id: user._id, name: user.name },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    return res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Erro no servidor' });
+    res.status(500).json({ error: 'Erro no servidor' });
   }
 });
 

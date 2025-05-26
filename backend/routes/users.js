@@ -1,17 +1,17 @@
 const express = require('express');
-const multer = require('multer');
+const User    = require('../models/User');
+const auth    = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
-});
-
-const upload = multer({ storage });
-
-router.post('/upload', upload.single('avatar'), (req, res) => {
-  res.json({ file: req.file.filename });
+// Exemplo: obter perfil do usuário logado
+outer.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    res.json(user);
+  } catch {
+    res.status(500).json({ error: 'Erro no servidor' });
+  }
 });
 
 module.exports = router;
