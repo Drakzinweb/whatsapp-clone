@@ -101,6 +101,7 @@
       z-index: 10;
     }
     
+    /* Call controls */
     .call-controls {
       position: absolute;
       bottom: 20px;
@@ -586,18 +587,52 @@
   <script>
     (async function() {
       // ===== Authentication check =====
-      const token    = localStorage.getItem('token');
-      const userId   = localStorage.getItem('userId');
-      const username = localStorage.getItem('username');
+      const token = localStorage.getItem('token');
       
-      // Se faltar algum dado de auth, redireciona
-      if (!token || !userId || !username) {
+      // Se não tiver token, redireciona para login
+      if (!token) {
         window.location.href = 'login.html';
-        return;  // interrompe a execução deste script
+        return;
       }
       
-      // **AQUI** você já tem a variável `username` válida:
-      document.getElementById('currentUsername').textContent = username;
+      // Verificar token no endpoint protegido
+      try {
+        const response = await fetch('https://whatsapp-clone-wwjc.onrender.com/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+          // Token inválido ou expirado
+          localStorage.removeItem('token');
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('Erro ao verificar autenticação');
+        }
+        
+        const userData = await response.json();
+        
+        // Armazenar dados do usuário
+        localStorage.setItem('userId', userData.id);
+        localStorage.setItem('username', userData.username);
+        
+        // Atualizar UI com nome do usuário
+        document.getElementById('currentUsername').textContent = userData.username;
+        
+      } catch (error) {
+        console.error('Erro na verificação de autenticação:', error);
+        localStorage.removeItem('token');
+        window.location.href = 'login.html';
+        return;
+      }
+      
+      // ===== Restante do código =====
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
       
       // Logout
       document.getElementById('logoutBtn').onclick = () => {
@@ -843,13 +878,13 @@
               <div class="grid grid-cols-3 gap-2 mb-6">
                 ${[5, 10, 30, 60, 300, 3600].map(sec => {
                   const mins = Math.floor(sec / 60);
-                  const displayText = sec < 60 ? `${sec} segundos` : 
-                                    sec === 60 ? '1 minuto' : 
-                                    `${mins} minutos`;
+                  const displayText = sec < 60 ? `${sec} segundos` :
+                                     sec === 60 ? '1 minuto' :
+                                     `${mins} minutos`;
                   return `
                     <button 
-                      class="py-2 px-3 rounded-lg border ${selfDestructSeconds === sec ? 'bg-indigo-100 border-indigo-500 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
-                      data-seconds="${sec}"
+                       class="py-2 px-3 rounded-lg border ${selfDestructSeconds === sec ? 'bg-indigo-100 border-indigo-500 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                       data-seconds="${sec}"
                     >
                       ${displayText}
                     </button>
@@ -1576,7 +1611,7 @@
       function appendMessage(msg) {
         // Remove the loading message if it exists
         if (messagesContainer.children.length === 1 && 
-              messagesContainer.children[0].classList.contains('text-center')) {
+               messagesContainer.children[0].classList.contains('text-center')) {
           messagesContainer.innerHTML = '';
         }
         
@@ -1650,7 +1685,7 @@
       function appendMediaMessage(msg) {
         // Remove the loading message if it exists
         if (messagesContainer.children.length === 1 && 
-              messagesContainer.children[0].classList.contains('text-center')) {
+               messagesContainer.children[0].classList.contains('text-center')) {
           messagesContainer.innerHTML = '';
         }
         
