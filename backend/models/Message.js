@@ -1,21 +1,20 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-  from: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  text: { type: String, default: '' },
+  media: {
+    type: { type: String, enum: ['image', 'video', null], default: null },
+    url: String
   },
-  to: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  text: {
-    type: String,
-    required: [true, 'A mensagem não pode estar vazia'],
-    trim: true
-  }
+  reactions: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: String
+  }],
+  isPinned: { type: Boolean, default: false },
+  isSelfDestruct: { type: Boolean, default: false },
+  destructAt: Date
 }, {
   timestamps: true
 });

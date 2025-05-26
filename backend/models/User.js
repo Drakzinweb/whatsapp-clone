@@ -5,24 +5,22 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     unique: true,
-    required: [true, 'O nome de usuário é obrigatório'],
-    trim: true,
-    minlength: [3, 'O nome de usuário deve ter pelo menos 3 caracteres']
+    required: true,
+    minlength: 3
   },
   email: {
     type: String,
     unique: true,
-    sparse: true, // opcional
-    trim: true
+    sparse: true
   },
   password: {
     type: String,
-    required: [true, 'A senha é obrigatória'],
-    minlength: [4, 'A senha deve ter pelo menos 4 caracteres'],
+    required: true,
+    minlength: 4,
     select: false
   },
   avatar: {
-    type: String, // URL ou base64
+    type: String,
     default: ''
   },
   blockedUsers: [{
@@ -37,20 +35,12 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Criptografar a senha antes de salvar
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    return next(err);
-  }
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-// Método para verificar senha
 userSchema.methods.matchPassword = function (password) {
   return bcrypt.compare(password, this.password);
 };

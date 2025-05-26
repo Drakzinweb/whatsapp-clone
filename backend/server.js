@@ -1,36 +1,53 @@
+require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const socketio = require('socket.io');
 const cors = require('cors');
-const dotenv = require('dotenv');
-dotenv.config();
+const { Server } = require('socket.io');
 
-// MODELS
+const User = require('./models/User');
 const Message = require('./models/Message');
-const Story = require('./models/story');
+const Story = require('./models/Story');
 
 const app = express();
-app.use(cors());
+const server = http.createServer(app);
+
+const FRONTEND_ORIGIN = '*'; // ou o domínio exato se quiser restringir
+
+app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
 
-const server = http.createServer(app);
-const io = socketio(server, {
-  cors: { origin: "*" }
+// Servir frontend (chat.html)
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'chat.html'));
 });
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB conectado"))
-  .catch(err => console.error("❌ Erro ao conectar:", err));
+// Conexão com MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('✅ MongoDB conectado'))
+  .catch(err => {
+    console.error('❌ Erro MongoDB:', err);
+    process.exit(1);
+  });
+
+// WebSocket
+const io = new Server(server, {
+  cors: {
+    origin: FRONTEND_ORIGIN,
+    credentials: true
+  }
+});
 
 const onlineUsers = new Map();
 
-// SOCKET.IO
-io.use(async (socket, next) => {
+io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error("Token ausente"));
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.userId = decoded.id;
@@ -41,38 +58,43 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log(`⚡ Usuário conectado: ${socket.userId}`);
+  console.log(`⚡ Conectado: ${socket.userId}`);
   onlineUsers.set(socket.userId, socket.id);
 
-  // Entrar em salas privadas entre 2 usuários
   socket.on('joinRoom', ({ to }) => {
     const room = [socket.userId, to].sort().join('_');
     socket.join(room);
   });
 
-  // Enviar mensagem de texto
   socket.on('sendMessage', async ({ to, text }) => {
-    const room = [socket.userId, to].sort().join('_');
     const msg = await Message.create({ from: socket.userId, to, text });
-    io.to(room).emit('message', { ...msg.toObject(), room });
+    const room = [socket.userId, to].sort().join('_');
+    io.to(room).emit('message', msg);
   });
 
-  // Mensagem com mídia (imagem/vídeo em base64)
   socket.on('mediaMessage', async ({ to, base64, type, text }) => {
-    if (!['image', 'video'].includes(type)) return;
-    const room = [socket.userId, to].sort().join('_');
     const msg = await Message.create({
       from: socket.userId,
       to,
       text,
       media: { type, url: base64 }
     });
+    const room = [socket.userId, to].sort().join('_');
     io.to(room).emit('message', msg);
   });
 
-  // Mensagem autodestrutiva
+  socket.on('react', async ({ messageId, emoji }) => {
+    const msg = await Message.findById(messageId);
+    if (!msg) return;
+    msg.reactions = msg.reactions.filter(r => r.userId.toString() !== socket.userId);
+    msg.reactions.push({ userId: socket.userId, emoji });
+    await msg.save();
+
+    const room = [msg.from.toString(), msg.to.toString()].sort().join('_');
+    io.to(room).emit('reaction', { messageId: msg._id, reactions: msg.reactions });
+  });
+
   socket.on('selfDestructMessage', async ({ to, text, seconds }) => {
-    const room = [socket.userId, to].sort().join('_');
     const destructAt = new Date(Date.now() + seconds * 1000);
     const msg = await Message.create({
       from: socket.userId,
@@ -82,6 +104,7 @@ io.on('connection', (socket) => {
       destructAt
     });
 
+    const room = [socket.userId, to].sort().join('_');
     io.to(room).emit('message', msg);
 
     setTimeout(async () => {
@@ -90,22 +113,6 @@ io.on('connection', (socket) => {
     }, seconds * 1000);
   });
 
-  // Reagir a uma mensagem
-  socket.on('react', async ({ messageId, emoji }) => {
-    const msg = await Message.findById(messageId);
-    if (!msg) return;
-    msg.reactions = msg.reactions.filter(r => r.userId.toString() !== socket.userId);
-    msg.reactions.push({ userId: socket.userId, emoji });
-    await msg.save();
-
-    const room = [msg.from.toString(), msg.to.toString()].sort().join('_');
-    io.to(room).emit('reaction', {
-      messageId: msg._id,
-      reactions: msg.reactions
-    });
-  });
-
-  // Fixar uma mensagem
   socket.on('pinMessage', async ({ messageId }) => {
     const msg = await Message.findByIdAndUpdate(messageId, { isPinned: true }, { new: true });
     if (msg) {
@@ -114,9 +121,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Enviar uma story (24h)
   socket.on('uploadStory', async ({ base64, type }) => {
-    if (!['image', 'video'].includes(type)) return;
     const story = await Story.create({
       userId: socket.userId,
       media: base64,
@@ -130,36 +135,32 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Chamadas WebRTC: iniciar chamada
   socket.on('callUser', ({ to, signalData }) => {
-    const targetSocket = onlineUsers.get(to);
-    if (targetSocket) {
-      io.to(targetSocket).emit('incomingCall', {
-        from: socket.userId,
-        signalData
-      });
+    const target = onlineUsers.get(to);
+    if (target) {
+      io.to(target).emit('incomingCall', { from: socket.userId, signalData });
     }
   });
 
-  // Chamadas WebRTC: aceitar chamada
   socket.on('answerCall', ({ to, signal }) => {
-    const targetSocket = onlineUsers.get(to);
-    if (targetSocket) {
-      io.to(targetSocket).emit('callAccepted', { signal });
+    const target = onlineUsers.get(to);
+    if (target) {
+      io.to(target).emit('callAccepted', { signal });
     }
   });
 
   socket.on('disconnect', () => {
-    console.log(`❌ Usuário saiu: ${socket.userId}`);
     onlineUsers.delete(socket.userId);
+    console.log(`❌ Desconectado: ${socket.userId}`);
   });
 });
 
-// Remoção automática de stories expiradas a cada 1 min
+// Limpar stories expirados
 setInterval(async () => {
   const expired = await Story.deleteMany({ expiresAt: { $lt: new Date() } });
   if (expired.deletedCount) io.emit('storyCleanup');
 }, 60 * 1000);
 
+// Iniciar servidor
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server rodando na porta ${PORT}`));
