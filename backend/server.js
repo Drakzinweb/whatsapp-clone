@@ -9,7 +9,7 @@ dotenv.config();
 
 // MODELS
 const Message = require('./models/Message');
-const Story = require('./models/Story');
+const Story = require('./models/story');
 
 const app = express();
 app.use(cors());
