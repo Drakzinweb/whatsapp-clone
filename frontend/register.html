@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registrar | Chat App</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-20px); }
-    }
-    .floating {
-      animation: float 6s ease-in-out infinite;
-    }
     .input-focus-effect:focus {
-      box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.5);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+      outline: none;
     }
     .gradient-bg {
-      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #6366f1 100%);
+      background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
     }
     .btn-hover {
       transition: all 0.3s ease;
@@ -31,67 +25,52 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
   <div class="absolute top-0 left-0 w-full h-1/2 gradient-bg rounded-b-3xl -z-10"></div>
-  
+
   <div class="w-full max-w-md">
-    <!-- Floating user-plus icon -->
-    <div class="floating mb-8 text-center">
+    <div class="mb-8 text-center">
       <div class="inline-block bg-white p-6 rounded-full shadow-xl">
         <i class="fas fa-user-plus text-4xl text-pink-500"></i>
       </div>
     </div>
-    
-    <!-- Register Card -->
+
     <div class="bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl">
       <div class="p-8">
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-gray-800">Crie sua conta</h1>
-          <p class="text-gray-500 mt-2">Cadastre-se para começar a conversar</p>
+          <p class="text-gray-500 mt-2">Registre-se para começar a conversar</p>
         </div>
-        
-        <form id="registerForm" class="space-y-6">
+
+        <form id="registerForm" class="space-y-6" autocomplete="off">
+          <div id="errorContainer" role="alert" aria-live="assertive"></div>
+
           <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fas fa-user text-gray-400"></i>
+                <i class="fas fa-envelope text-gray-400"></i>
               </div>
-              <input 
-                id="username" 
-                type="text" 
-                placeholder="Escolha um usuário" 
-                required 
-                class="input-focus-effect w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition"
-              >
+              <input id="email" name="email" type="email" required placeholder="Seu email" class="input-focus-effect w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition" />
             </div>
           </div>
-          
+
           <div>
             <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400"></i>
               </div>
-              <input 
-                id="password" 
-                type="password" 
-                placeholder="Digite uma senha" 
-                required 
-                class="input-focus-effect w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition"
-              >
-              <button type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600" id="togglePassword">
-                <i class="fas fa-eye"></i>
-              </button>
+              <input id="password" name="password" type="password" required placeholder="Crie uma senha" class="input-focus-effect w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition" />
             </div>
           </div>
-          
-          <button type="submit" class="btn-hover w-full bg-pink-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+
+          <button type="submit" class="btn-hover w-full bg-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
             Registrar
           </button>
         </form>
-        
+
         <div class="mt-6 text-center">
-          <p class="text-gray-600">Já tem conta? 
-            <a href="login.html" class="font-medium text-pink-500 hover:text-pink-400">Entrar</a>
+          <p class="text-gray-600">Já tem uma conta?
+            <a href="login.html" class="font-medium text-pink-600 hover:text-pink-500">Entrar</a>
           </p>
         </div>
       </div>
@@ -100,64 +79,59 @@
 
   <script>
     const API = 'https://whatsapp-clone-wwjc.onrender.com/api/auth';
-    
-    // Toggle password visibility
-    document.getElementById('togglePassword').addEventListener('click', function() {
-      const pwd = document.getElementById('password');
-      const icon = this.querySelector('i');
-      if (pwd.type === 'password') {
-        pwd.type = 'text';
-        icon.classList.replace('fa-eye', 'fa-eye-slash');
-      } else {
-        pwd.type = 'password';
-        icon.classList.replace('fa-eye-slash', 'fa-eye');
-      }
-    });
-    
-    // Form submission
-    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = this.querySelector('button[type="submit"]');
-      const original = btn.textContent;
-      
-      // loading state
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Registrando...';
-      btn.disabled = true;
-      
+      const form = e.target;
+      const errorContainer = document.getElementById('errorContainer');
+      errorContainer.textContent = '';
+
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalText = submitButton.textContent;
+
+      submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Registrando...';
+      submitButton.disabled = true;
+
       try {
-        const res = await fetch(`${API}/register`, {
+        const response = await fetch(`${API}/signup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username: e.target.username.value,
-            password: e.target.password.value
+            email: form.elements.email.value.trim(),
+            password: form.elements.password.value
           })
         });
-        const data = await res.json();
-        
-        if (!res.ok) {
-          // erro
-          alert(data.message || 'Falha no registro');
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'mb-4 p-3 bg-red-100 text-red-700 rounded-lg animate-bounce';
+          errorDiv.textContent = data.message || 'Erro ao registrar';
+          errorContainer.appendChild(errorDiv);
+
+          setTimeout(() => {
+            errorDiv.classList.remove('animate-bounce');
+            errorDiv.style.transition = 'opacity 0.3s ease';
+            errorDiv.style.opacity = '0';
+            setTimeout(() => errorDiv.remove(), 300);
+          }, 5000);
           return;
         }
-        
-        // salva token e userId
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userId', data.userId);
-        localStorage.setItem('username', data.username);
-        // feedback de sucesso
-        btn.innerHTML = '<i class="fas fa-check mr-2"></i> Sucesso!';
-        btn.classList.replace('bg-pink-500','bg-green-500');
-        
-        setTimeout(() => window.location.href = 'chat.html', 800);
+
+        submitButton.innerHTML = '<i class="fas fa-check mr-2"></i> Sucesso!';
+        submitButton.classList.replace('bg-pink-600', 'bg-green-500');
+
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1000);
+
       } catch (err) {
+        alert('Erro de conexão. Tente novamente.');
         console.error(err);
-        alert('Erro no servidor. Tente novamente.');
       } finally {
-        if (!localStorage.getItem('token')) {
-          btn.textContent = original;
-          btn.disabled = false;
-        }
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
       }
     });
   </script>

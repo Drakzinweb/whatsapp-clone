@@ -29,28 +29,28 @@ if (!JWT_SECRET || !MONGO_URI) {
   process.exit(1);
 }
 
-// Security & Performance Middlewares
+// Middlewares
 app.use(helmet());
 app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
-app.use(morgan('combined'));
+app.use(morgan('dev'));
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: { error: 'Too many requests, please try again later.' },
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, try again later.' },
   })
 );
 
-// API Routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 
-// Serve frontend
+// Static frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'frontend', 'chat.html')));
 
-// MongoDB connection
+// Connect MongoDB
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('✅ MongoDB connected'))
@@ -59,17 +59,16 @@ mongoose
     process.exit(1);
   });
 
-// Socket.IO setup
+// Socket.IO
 const io = new Server(server, {
   cors: { origin: FRONTEND_ORIGIN, credentials: true }
 });
 
-// JWT auth middleware for sockets
+// JWT auth for sockets
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
-  if (!token) {
-    return next(new Error('Authentication error: token missing'));
-  }
+  if (!token) return next(new Error('Authentication error: token missing'));
+
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) return next(new Error('Authentication error: token invalid'));
     socket.userId = decoded.id;
@@ -77,25 +76,22 @@ io.use((socket, next) => {
   });
 });
 
-// Online users map
 const onlineUsers = new Map();
 
-// Handle connections
 io.on('connection', socket => {
-  console.log(`⚡ User connected: ${socket.userId}`);
+  console.log(`⚡ Connected: ${socket.userId}`);
   onlineUsers.set(socket.userId, socket.id);
 
-  // Join private room
   socket.on('joinRoom', ({ to }) => {
     const room = [socket.userId, to].sort().join('_');
     socket.join(room);
   });
 
-  // Send text message
   socket.on('sendMessage', async ({ to, text }) => {
-    if (!to || !text.trim()) return;
+    if (!to || !text?.trim()) return;
     try {
-      const msg = await require('./models/Message').create({
+      const Message = require('./models/Message');
+      const msg = await Message.create({
         from: socket.userId,
         to,
         text: text.trim(),
@@ -104,15 +100,15 @@ io.on('connection', socket => {
       const room = [socket.userId, to].sort().join('_');
       io.to(room).emit('message', msg);
     } catch (err) {
-      console.error('❌ Message save error:', err);
+      console.error('❌ sendMessage error:', err);
     }
   });
 
-  // Media message
   socket.on('mediaMessage', async ({ to, base64, type, text = '' }) => {
     if (!to || !base64 || !type) return;
     try {
-      const msg = await require('./models/Message').create({
+      const Message = require('./models/Message');
+      const msg = await Message.create({
         from: socket.userId,
         to,
         text: text.trim(),
@@ -122,16 +118,15 @@ io.on('connection', socket => {
       const room = [socket.userId, to].sort().join('_');
       io.to(room).emit('message', msg);
     } catch (err) {
-      console.error('❌ Media message save error:', err);
+      console.error('❌ mediaMessage error:', err);
     }
   });
 
-  // React to message
   socket.on('react', async ({ messageId, emoji }) => {
     if (!messageId || !emoji) return;
     try {
-      const model = require('./models/Message');
-      const msg = await model.findById(messageId);
+      const Message = require('./models/Message');
+      const msg = await Message.findById(messageId);
       if (!msg) return;
       msg.reactions = msg.reactions.filter(r => r.userId.toString() !== socket.userId);
       msg.reactions.push({ userId: socket.userId, emoji });
@@ -139,16 +134,16 @@ io.on('connection', socket => {
       const room = [msg.from.toString(), msg.to.toString()].sort().join('_');
       io.to(room).emit('reaction', { messageId, reactions: msg.reactions });
     } catch (err) {
-      console.error('❌ Reaction error:', err);
+      console.error('❌ react error:', err);
     }
   });
 
-  // Self-destruct message
   socket.on('selfDestructMessage', async ({ to, text, seconds }) => {
-    if (!to || !text.trim() || !seconds || seconds <= 0) return;
+    if (!to || !text?.trim() || !seconds || seconds <= 0) return;
     try {
+      const Message = require('./models/Message');
       const destructAt = new Date(Date.now() + seconds * 1000);
-      const msg = await require('./models/Message').create({
+      const msg = await Message.create({
         from: socket.userId,
         to,
         text: text.trim(),
@@ -160,53 +155,48 @@ io.on('connection', socket => {
       io.to(room).emit('message', msg);
       setTimeout(async () => {
         try {
-          await require('./models/Message').findByIdAndDelete(msg._id);
+          await Message.findByIdAndDelete(msg._id);
           io.to(room).emit('messageDeleted', { id: msg._id });
         } catch (err) {
-          console.error('❌ Self-destruct deletion error:', err);
+          console.error('❌ Auto-delete error:', err);
         }
       }, seconds * 1000);
     } catch (err) {
-      console.error('❌ Self-destruct creation error:', err);
+      console.error('❌ selfDestructMessage error:', err);
     }
   });
 
-  // Pin message
   socket.on('pinMessage', async ({ messageId }) => {
     if (!messageId) return;
     try {
-      const msg = await require('./models/Message').findByIdAndUpdate(
-        messageId,
-        { isPinned: true },
-        { new: true }
-      );
+      const Message = require('./models/Message');
+      const msg = await Message.findByIdAndUpdate(messageId, { isPinned: true }, { new: true });
       if (msg) {
         const room = [msg.from.toString(), msg.to.toString()].sort().join('_');
         io.to(room).emit('pinned', { messageId: msg._id });
       }
     } catch (err) {
-      console.error('❌ Pin error:', err);
+      console.error('❌ pinMessage error:', err);
     }
   });
 
-  // Upload story
   socket.on('uploadStory', async ({ base64, type }) => {
     if (!base64 || !type) return;
     try {
-      const story = await require('./models/Story').create({
+      const Story = require('./models/Story');
+      const story = await Story.create({
         userId: socket.userId,
         media: base64,
         type,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 86400000),
         createdAt: new Date(),
       });
       io.emit('newStory', { userId: story.userId, media: story.media, type: story.type });
     } catch (err) {
-      console.error('❌ Story upload error:', err);
+      console.error('❌ uploadStory error:', err);
     }
   });
 
-  // WebRTC signaling
   socket.on('callUser', ({ to, signalData }) => {
     const target = onlineUsers.get(to);
     if (target) io.to(target).emit('incomingCall', { from: socket.userId, signalData });
@@ -217,17 +207,14 @@ io.on('connection', socket => {
     if (target) io.to(target).emit('callAccepted', { signal });
   });
 
-  // Disconnect
   socket.on('disconnect', () => {
-    console.log(`🔌 User disconnected: ${socket.userId}`);
+    console.log(`🔌 Disconnected: ${socket.userId}`);
     onlineUsers.delete(socket.userId);
   });
 });
 
-// Global error handler
 app.use(errorHandler);
 
-// Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
