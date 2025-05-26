@@ -9,15 +9,30 @@ const userSchema = new mongoose.Schema({
     trim: true,
     minlength: [3, 'O nome de usuário deve ter pelo menos 3 caracteres']
   },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true, // opcional
+    trim: true
+  },
   password: {
     type: String,
     required: [true, 'A senha é obrigatória'],
-    minlength: [4, 'A senha deve ter pelo menos 4 caracteres']
+    minlength: [4, 'A senha deve ter pelo menos 4 caracteres'],
+    select: false
+  },
+  avatar: {
+    type: String, // URL ou base64
+    default: ''
   },
   blockedUsers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  }
 }, {
   timestamps: true
 });
