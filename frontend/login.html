@@ -4,9 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Entrar | Chat App</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind CSS CDN só CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet" />
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
   <style>
+    /* CSS extra personalizado */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-20px); }
@@ -166,6 +171,8 @@
             errorDiv.style.opacity = '0';
             setTimeout(() => errorDiv.remove(), 300);
           }, 5000);
+          submitButton.textContent = originalText;
+          submitButton.disabled = false;
           return;
         }
 
@@ -178,19 +185,16 @@
         submitButton.classList.replace('bg-indigo-600', 'bg-green-500');
 
         setTimeout(() => {
-          window.location.href = 'chat.html';
-        }, 1000);
+          window.location.href = '/'; // Ajuste a rota após login
+        }, 1500);
 
-      } catch (err) {
-        alert('Erro de conexão. Tente novamente.');
-        console.error(err);
-      } finally {
-        if (!localStorage.getItem('token')) {
-          submitButton.textContent = originalText;
-          submitButton.disabled = false;
-        }
+      } catch (error) {
+        errorContainer.innerHTML = '<div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">Erro de rede. Tente novamente.</div>';
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
       }
     });
   </script>
 </body>
 </html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
