@@ -5,18 +5,19 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     unique: true,
-    required: true,
-    minlength: 3
+    required: [true, 'Usuário é obrigatório'],
+    minlength: [3, 'Usuário deve ter no mínimo 3 caracteres']
   },
   email: {
     type: String,
     unique: true,
-    sparse: true
+    sparse: true,
+    match: [/.+@.+\..+/, 'Por favor, insira um email válido']
   },
   password: {
     type: String,
-    required: true,
-    minlength: 4,
+    required: [true, 'Senha é obrigatória'],
+    minlength: [4, 'Senha deve ter no mínimo 4 caracteres'],
     select: false
   },
   avatar: {
@@ -35,13 +36,19 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-userSchema.pre('save', async function (next) {
+// Hash da senha antes de salvar (se modificada)
+userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  try {
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
-userSchema.methods.matchPassword = function (password) {
+// Método para comparar senha recebida com a hash
+userSchema.methods.matchPassword = function(password) {
   return bcrypt.compare(password, this.password);
 };
 
