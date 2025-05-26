@@ -5,6 +5,7 @@ const http = require('http');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 const { Server } = require('socket.io');
 
 const User = require('./models/User');
@@ -28,6 +29,45 @@ if (!JWT_SECRET || !MONGO_URI) {
 // Middlewares
 app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
+
+// ROTAS DE AUTENTICAÇÃO (REGISTRO E LOGIN)
+
+app.post('/api/auth/register', async (req, res) => {
+  const { username, password, name } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+
+  try {
+    const exists = await User.findOne({ username });
+    if (exists) return res.status(409).json({ error: 'Usuário já existe' });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await User.create({ username, password: hashedPassword, name: name || username });
+
+    res.status(201).json({ message: 'Usuário criado com sucesso' });
+  } catch (error) {
+    console.error('Erro no registro:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+
+    const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET);
+    res.json({ token, user: { id: user._id, username: user.username, name: user.name } });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
 
 // Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
@@ -221,25 +261,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    console.log(`🔌 Usuário desconectado: ${socket.userId}`);
     onlineUsers.delete(socket.userId);
-    console.log(`❌ Usuário desconectado: ${socket.userId}`);
   });
 });
 
-// Limpeza de stories expirados (a cada 1 minuto)
-setInterval(async () => {
-  try {
-    const result = await Story.deleteMany({ expiresAt: { $lt: new Date() } });
-    if (result.deletedCount > 0) {
-      io.emit('storyCleanup');
-      console.log(`🧹 Stories expirados removidos: ${result.deletedCount}`);
-    }
-  } catch (err) {
-    console.error('❌ Erro ao limpar stories expirados:', err);
-  }
-}, 60 * 1000);
-
-// Inicialização do servidor
+// Iniciar servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
