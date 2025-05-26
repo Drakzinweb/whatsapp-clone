@@ -1,18 +1,17 @@
-// backend/routes/users.js
 const express = require('express');
-const User    = require('../models/User');
-const auth    = require('../middleware/authMiddleware');
+const User = require('../models/User');
+const auth = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Exemplo: obter perfil do usuário logado
+// Rota protegida
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
     res.json(user);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro no servidor' });
+  } catch {
+    res.status(500).json({ error: 'Erro ao buscar usuário' });
   }
 });
 
