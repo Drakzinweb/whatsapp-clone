@@ -1,64 +1,34 @@
-require('dotenv').config();
-const path = require('path');
 const express = require('express');
-const http = require('http');
-const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const morgan = require('morgan');
+const User = require('../models/User');
 
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const authMiddleware = require('./middleware/authMiddleware');
-const { errorHandler } = require('./middleware/errorHandler');
+const router = express.Router();
 
-// Conecta ao MongoDB
-connectDB();
+router.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  const userExists = await User.findOne({ email });
+  if (userExists) return res.status(400).json({ error: 'Usuário já existe' });
 
-const app = express();
-const server = http.createServer(app);
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await User.create({ name, email, password: hashedPassword });
 
-// Configurações
-const PORT = process.env.PORT || 3000;
-const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '*';
-
-// Middlewares gerais
-app.use(helmet());
-app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
-app.use(express.json());
-app.use(morgan('dev'));
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: 'Muitas requisições, tente novamente mais tarde.' }
-  })
-);
-
-// Rotas da API
-app.use('/api/auth', authRoutes);
-app.use('/api/users', authMiddleware, userRoutes); // Todas as rotas de /api/users protegidas
-
-// Rota protegida de exemplo
-app.get('/api/protected', authMiddleware, (req, res) => {
-  res.json({ message: `Olá usuário ${req.userId}` });
+  res.status(201).json({ message: 'Usuário criado com sucesso' });
 });
 
-// Serve arquivos estáticos do frontend
-app.use(express.static(FRONTEND_DIR));
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
 
-// Se não encontrar rota API, retorna index.html (SPA fallback)
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' });
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
+
+  res.json({ token });
 });
 
-// Middleware global de erros
-app.use(errorHandler);
-
-// Inicia o servidor
-server.listen(PORT, () => console.log(`🚀 Server rodando na porta ${PORT}`));
+module.exports = router;
