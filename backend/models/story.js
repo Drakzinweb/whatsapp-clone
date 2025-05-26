@@ -32,3 +32,6 @@ const storySchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Story', storySchema);
+  
+
+//TESTE...//
