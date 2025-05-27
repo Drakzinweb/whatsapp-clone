@@ -12,7 +12,7 @@
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   <!-- Emoji Picker -->
   <script src="https://cdn.jsdelivr.net/npm/@emoji-mart/react"></script>
-  
+    
   <style>
     /* Custom scrollbar */
     ::-webkit-scrollbar {
@@ -597,7 +597,7 @@
       
       // Verificar token no endpoint protegido
       try {
-        const response = await fetch('https://whatsapp-clone-wwjc.onrender.com/api/users/me', {
+        const response = await fetch('/api/users/me', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -618,11 +618,12 @@
         
         // Armazenar dados do usuário
         localStorage.setItem('userId', userData.id);
-        localStorage.setItem('username', userData.username);
+        localStorage.setItem('username', userData.name); // Alterado para userData.name
         
         // Atualizar UI com nome do usuário
-        document.getElementById('currentUsername').textContent = userData.username;
-        
+        document.getElementById('currentUsername').textContent = userData.name;
+        document.getElementById('profileUsername').textContent = userData.name;
+      
       } catch (error) {
         console.error('Erro na verificação de autenticação:', error);
         localStorage.removeItem('token');
@@ -789,7 +790,7 @@
         }, 5000);
       });
       
-      // Quando a conexão é estabelecida
+      // Quando a conexão es estabelecida
       socket.on('connect', () => {
         console.log('Conectado ao servidor Socket.IO');
         
@@ -882,8 +883,8 @@
                                      sec === 60 ? '1 minuto' :
                                      `${mins} minutos`;
                   return `
-                    <button 
-                       class="py-2 px-3 rounded-lg border ${selfDestructSeconds === sec ? 'bg-indigo-100 border-indigo-500 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                    <button
+                        class="py-2 px-3 rounded-lg border ${selfDestructSeconds === sec ? 'bg-indigo-100 border-indigo-500 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}"
                        data-seconds="${sec}"
                     >
                       ${displayText}
@@ -1337,13 +1338,13 @@
               <i class="fas fa-user"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate">${user.username}</p>
+              <p class="text-sm font-medium text-gray-900 truncate">${user.name}</p>
               <p class="text-xs text-gray-500">Online</p>
             </div>
             <div class="w-2 h-2 rounded-full bg-green-500"></div>
           `;
           
-          li.addEventListener('click', () => selectUser(user.id, user.username, li));
+          li.addEventListener('click', () => selectUser(user.id, user.name, li));
           usersList.appendChild(li);
         });
       }
@@ -1352,15 +1353,15 @@
       searchInput.addEventListener('input', () => {
         const searchTerm = searchInput.value.toLowerCase();
         const filteredUsers = onlineUsers.filter(user => 
-          user.username.toLowerCase().includes(searchTerm)
+          user.name.toLowerCase().includes(searchTerm)
         );
         renderUsersList(filteredUsers);
       });
       
       // Select user for private chat
-      function selectUser(id, username, element) {
+      function selectUser(id, name, element) {
         currentChatUserId = id;
-        currentChatUsername = username;
+        currentChatUsername = name;
         
         // Update UI
         Array.from(usersList.children).forEach(li => {
@@ -1371,7 +1372,7 @@
           element.classList.add('bg-gray-100');
         }
         
-        chatTitle.textContent = username;
+        chatTitle.textContent = name;
         document.querySelector('#chatHeader .text-xs').textContent = 'Online';
         
         // Clear and update messages container
@@ -1610,8 +1611,8 @@
       // ===== Helpers =====
       function appendMessage(msg) {
         // Remove the loading message if it exists
-        if (messagesContainer.children.length === 1 && 
-               messagesContainer.children[0].classList.contains('text-center')) {
+        if (messagesContainer.children.length === 1 &&
+                messagesContainer.children[0].classList.contains('text-center')) {
           messagesContainer.innerHTML = '';
         }
         
@@ -1684,8 +1685,8 @@
       
       function appendMediaMessage(msg) {
         // Remove the loading message if it exists
-        if (messagesContainer.children.length === 1 && 
-               messagesContainer.children[0].classList.contains('text-center')) {
+        if (messagesContainer.children.length === 1 &&
+                messagesContainer.children[0].classList.contains('text-center')) {
           messagesContainer.innerHTML = '';
         }
         
