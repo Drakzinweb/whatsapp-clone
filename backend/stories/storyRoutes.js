@@ -3,13 +3,13 @@ const router = express.Router();
 const auth = require('../login/authMiddleware');
 const controller = require('./storyController');
 
-// Todas as rotas são protegidas
+// Todas as rotas de stories são protegidas
 router.use(auth);
 
-// Criar story
-router.post('/', controller.createStory);
+// POST /api/stories
+router.post('/', controller.postStory);
 
-// Listar stories ativos
-router.get('/', controller.getActiveStories);
+// GET /api/stories[?userId=...] 
+router.get('/', controller.listStories);
 
 module.exports = router;
