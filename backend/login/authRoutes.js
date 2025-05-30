@@ -42,7 +42,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Rota de login
+// Rota de loginn
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
