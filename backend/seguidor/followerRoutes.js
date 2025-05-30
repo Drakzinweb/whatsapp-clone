@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/authMiddleware');
+const auth = require('../login/authMiddleware');   // << caminho corrigido
 const controller = require('./followerController');
 
-// Todas as rotas são protegidas por autenticação
+// Todas as rotas de seguidores são protegidas
 router.use(auth);
 
 router.post('/follow', controller.followUser);
