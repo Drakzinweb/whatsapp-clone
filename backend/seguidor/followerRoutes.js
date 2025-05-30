@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const User = require('../routes/User');
+const User = require('../models/User');
 
 // Lista todos os usuários com status de "seguindo"
 router.get('/all-users', authMiddleware, async (req, res) => {

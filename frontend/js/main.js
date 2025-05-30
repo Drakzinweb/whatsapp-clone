@@ -9,18 +9,19 @@ function showFeedback(message, isError = true) {
   fb.textContent = message;
 }
 
-// Função genérica para login/register
+// Função genérica para login ou registro
 async function handleAuthForm(e, type) {
   e.preventDefault();
+  showFeedback('', true); // limpa feedback
 
-  // Limpa feedback anterior
-  showFeedback('', true);
-
-  // Monta o objeto com todos os campos do form
   const data = {};
   [...e.target.elements].forEach(el => {
-    if (el.id) data[el.id] = el.value.trim();
+    if (el.id && el.value.trim()) data[el.id] = el.value.trim();
   });
+
+  if (!data.email || !data.password || (type === 'register' && !data.name)) {
+    return showFeedback('Preencha todos os campos obrigatórios.');
+  }
 
   try {
     const res  = await fetch(`${API_AUTH}/${type}`, {
@@ -28,74 +29,75 @@ async function handleAuthForm(e, type) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
 
-    if (!res.ok) {
-      return showFeedback(json.error || 'Erro na requisição', true);
-    }
+    const json = await res.json();
+    if (!res.ok) return showFeedback(json.error || 'Erro ao processar requisição.');
 
     if (type === 'login') {
-      // Salva token e dados do usuário
+      // Armazena dados no localStorage
       localStorage.setItem('token', json.token);
       localStorage.setItem('userId', json.user.id);
       localStorage.setItem('username', json.user.name);
-      // Redireciona pro chat
       window.location = 'chat.html';
     } else {
-      // registro
       showFeedback('Registrado com sucesso! Redirecionando...', false);
       setTimeout(() => window.location = 'login.html', 1500);
     }
 
   } catch (err) {
     console.error('Erro de conexão:', err);
-    showFeedback('Falha de conexão com o servidor.', true);
+    showFeedback('Erro ao conectar com o servidor.');
   }
 }
 
-// Verifica e protege o chat, e configura logout
-async function protectChatAndSetup() {
+// Verifica se o usuário está autenticado
+async function protectChatAndSetup(callback = null) {
   const token    = localStorage.getItem('token');
   const userId   = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
 
-  // Se faltar algo, manda pro login
   if (!token || !userId || !username) {
+    localStorage.clear();
     window.location = 'login.html';
     return false;
   }
 
   // Exibe nome do usuário e configura logout
-  document.getElementById('currentUsername').textContent = username;
-  document.getElementById('logoutBtn').onclick = () => {
-    localStorage.clear();
-    window.location = 'login.html';
-  };
+  const currentUser = document.getElementById('currentUsername');
+  if (currentUser) currentUser.textContent = username;
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      localStorage.clear();
+      window.location = 'login.html';
+    };
+  }
+
+  if (typeof callback === 'function') {
+    callback({ token, userId, username });
+  }
 
   return true;
 }
 
-// Dispatcher de páginas
+// Dispatcher baseado na página
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
 
-  // login.html
   if (path.endsWith('login.html')) {
     document.getElementById('form')
       .addEventListener('submit', e => handleAuthForm(e, 'login'));
-  }
 
-  // register.html
-  else if (path.endsWith('register.html')) {
+  } else if (path.endsWith('register.html')) {
     document.getElementById('form')
       .addEventListener('submit', e => handleAuthForm(e, 'register'));
-  }
 
-  // chat.html
-  else if (path.endsWith('chat.html')) {
-    protectChatAndSetup().then(ok => {
-      if (!ok) return;
-      // Aqui você pode iniciar o chat (Socket.IO, etc)
+  } else if (path.endsWith('chat.html')) {
+    protectChatAndSetup(({ token, userId, username }) => {
+      // Lógica adicional ao entrar no chat
+      console.log('Usuário autenticado:', username);
+      // Aqui você pode iniciar conexão com o socket, carregar mensagens, etc.
     });
   }
 });
