@@ -1,75 +1,81 @@
 const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../usuarios/User');
 
-const router = express.Router();
+// 📌 Validações simples
+const validateRegister = (name, email, password) => {
+  if (!name || !email || !password) return 'Todos os campos são obrigatórios';
+  if (!email.includes('@')) return 'Email inválido';
+  if (password.length < 6) return 'A senha deve ter no mínimo 6 caracteres';
+  return null;
+};
 
-// Rota de registro
+const validateLogin = (email, password) => {
+  if (!email || !password) return 'Email e senha são obrigatórios';
+  if (!email.includes('@')) return 'Email inválido';
+  return null;
+};
+
+// 🔐 Rota de registro
 router.post('/register', async (req, res) => {
-  const { name, email, password, username } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
-  }
+  const error = validateRegister(name, email, password);
+  if (error) return res.status(400).json({ error });
 
   try {
-    // Verifica se email já está em uso
-    if (await User.findOne({ email })) {
-      return res.status(400).json({ error: 'E-mail já cadastrado.' });
-    }
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Email já registrado' });
 
-    // Se estiver usando username, verifique também
-    if (username && await User.findOne({ username })) {
-      return res.status(400).json({ error: 'Nome de usuário já está em uso.' });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword });
+    await newUser.save();
 
-    const hash = await bcrypt.hash(password, 10);
-
-    const user = await User.create({ name, email, password: hash, username });
-
-    res.status(201).json({ message: 'Usuário criado com sucesso', userId: user._id });
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({
+      message: 'Usuário registrado com sucesso',
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email
+      },
+      token
+    });
   } catch (err) {
-    console.error('Erro ao registrar:', err.message);
-
-    // Erro de chave duplicada (MongoDB)
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ error: `Já existe um usuário com o mesmo ${field}.` });
-    }
-
-    res.status(500).json({ error: 'Erro interno ao registrar o usuário.' });
+    console.error('Erro no registro:', err.message);
+    res.status(500).json({ error: 'Erro ao registrar usuário' });
   }
 });
 
-// Rota de loginn
+// 🔑 Rota de login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
-  }
+  const error = validateLogin(email, password);
+  if (error) return res.status(400).json({ error });
 
   try {
     const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
+    if (!user) return res.status(400).json({ error: 'Credenciais inválidas' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ error: 'Credenciais inválidas' });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
     res.json({
-      token,
+      message: 'Login bem-sucedido',
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
-        username: user.username || null
-      }
+        email: user.email
+      },
+      token
     });
   } catch (err) {
     console.error('Erro no login:', err.message);
-    res.status(500).json({ error: 'Erro interno ao fazer login.' });
+    res.status(500).json({ error: 'Erro ao autenticar' });
   }
 });
 
