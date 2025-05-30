@@ -1,88 +1,33 @@
-// seguidor/followerController.js
-const User = require('../routes/User');
+import { create, findOneAndDelete, find } from './follow';
+import User from '../usuarios/User';
+import { asyncHandler, sendSuccess, sendError, AppError } from '../utils/helpers';
 
-// Lista TODOS usuários (exceto o logado) com info se já é seguido
-exports.getAllUsers = async (req, res) => {
-  try {
-    const loggedUser = await User.findById(req.userId);
+export const followUser = asyncHandler(async (req, res) => {
+  const followerId = req.userId;
+  const { userIdToFollow } = req.body;
 
-    const users = await User.find({ _id: { $ne: req.userId } }).select('name email');
+  if (followerId === userIdToFollow) throw new AppError('Você não pode seguir a si mesmo', 400);
 
-    const usersWithFollowStatus = users.map(user => ({
-      _id: user._id,
-      name: user.name,
-      isFollowing: loggedUser.following.some(followId => followId.equals(user._id)),
-    }));
+  await create({ follower: followerId, following: userIdToFollow });
+  sendSuccess(res, null, 'Usuário seguido com sucesso');
+});
 
-    res.json(usersWithFollowStatus);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erro ao buscar usuários' });
-  }
-};
+export const unfollowUser = asyncHandler(async (req, res) => {
+  const followerId = req.userId;
+  const { userIdToUnfollow } = req.body;
 
-// Seguir usuário
-exports.followUser = async (req, res) => {
-  try {
-    const loggedUser = await User.findById(req.userId);
-    const userToFollow = await User.findById(req.params.id);
+  await findOneAndDelete({ follower: followerId, following: userIdToUnfollow });
+  sendSuccess(res, null, 'Deixou de seguir o usuário');
+});
 
-    if (!userToFollow) return res.status(404).json({ message: 'Usuário não encontrado' });
-    if (loggedUser.following.includes(userToFollow._id))
-      return res.status(400).json({ message: 'Você já segue este usuário' });
+export const listFollowing = asyncHandler(async (req, res) => {
+  const follows = await find({ follower: req.userId }).populate('following', 'name email');
+  const followingUsers = follows.map(f => f.following);
+  sendSuccess(res, followingUsers, 'Usuários que você segue');
+});
 
-    loggedUser.following.push(userToFollow._id);
-    userToFollow.followers.push(loggedUser._id);
-
-    await loggedUser.save();
-    await userToFollow.save();
-
-    res.json({ message: 'Seguindo usuário com sucesso' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erro ao seguir usuário' });
-  }
-};
-
-// Deixar de seguir usuário
-exports.unfollowUser = async (req, res) => {
-  try {
-    const loggedUser = await User.findById(req.userId);
-    const userToUnfollow = await User.findById(req.params.id);
-
-    if (!userToUnfollow) return res.status(404).json({ message: 'Usuário não encontrado' });
-    if (!loggedUser.following.includes(userToUnfollow._id))
-      return res.status(400).json({ message: 'Você não segue este usuário' });
-
-    loggedUser.following = loggedUser.following.filter(id => !id.equals(userToUnfollow._id));
-    userToUnfollow.followers = userToUnfollow.followers.filter(id => !id.equals(loggedUser._id));
-
-    await loggedUser.save();
-    await userToUnfollow.save();
-
-    res.json({ message: 'Deixou de seguir usuário com sucesso' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erro ao deixar de seguir usuário' });
-  }
-};
-
-// Lista usuários para chat: só os que você segue ou que te seguem
-exports.getFollowedUsers = async (req, res) => {
-  try {
-    const loggedUser = await User.findById(req.userId);
-
-    const users = await User.find({
-      _id: { $ne: req.userId },
-      $or: [
-        { _id: { $in: loggedUser.following } },
-        { _id: { $in: loggedUser.followers } }
-      ]
-    }).select('name email');
-
-    res.json(users);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erro ao buscar usuários para chat' });
-  }
-};
+export const listFollowers = asyncHandler(async (req, res) => {
+  const followers = await find({ following: req.userId }).populate('follower', 'name email');
+  const followerUsers = followers.map(f => f.follower);
+  sendSuccess(res, followerUsers, 'Seus seguidores');
+});

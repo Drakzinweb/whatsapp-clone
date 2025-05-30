@@ -75,3 +75,52 @@ node_modules/...
 package-lock.json
 package.json
 .env
+
+
+backend/
+│
+├── config/
+│   └── db.js                         # Conexão com MongoDB
+│
+├── login/                            # 🔐 Login e Registro
+│   ├── authController.js             # Lógica de autenticação
+│   ├── authRoutes.js                 # Rotas: /api/auth
+│   ├── authMiddleware.js             # Middleware: proteção com JWT
+│   └── validations.js                # Validações de login e registro
+│
+├── mensagens/                        # 💬 Envio e recebimento de mensagens
+│   ├── messageController.js          # Envia e busca mensagens
+│   ├── messageRoutes.js              # Rotas: /api/messages
+│   └── Message.js                    # Modelo da mensagem
+│
+├── usuarios/                         # 👥 Listagem de usuários, perfil
+│   ├── userController.js             # Lógica: listar usuários, perfil
+│   ├── userRoutes.js                 # Rotas: /api/users
+│   └── User.js                       # Modelo do usuário
+│
+├── chamadas/                         # 📞 Chamada de vídeo/voz
+│   ├── callController.js             # Iniciar, encerrar chamadas
+│   ├── callRoutes.js                 # Rotas: /api/calls
+│   └── callService.js                # Lógica da chamada (opcional)
+│
+├── stories/                          # 📸 Stories dos usuários
+│   ├── storyController.js            # Criar e buscar stories
+│   ├── storyRoutes.js                # Rotas: /api/stories
+│   └── Story.js                      # Modelo do story
+│
+├── seguidor/                         # 🔗 Seguir e listar seguidores
+│   ├── followerController.js         # Seguir, deixar de seguir
+│   ├── followerRoutes.js             # Rotas: /api/follow
+│   └── Follow.js                     # Modelo de relacionamento follow
+│
+├── sockets/                          # 🔌 Comunicação em tempo real
+│   └── socketHandler.js              # Status online, mensagens, chamadas
+│
+├── middleware/                       # ⚙️ Middlewares globais
+│   └── errorHandler.js               # Tratamento de erros
+│
+├── utils/                            # 🧰 Utilitários e funções comuns
+│   └── helpers.js                    # (opcional) Funções auxiliares
+│
+├── server.js                         # 🚀 Inicializa o servidor
+└── .env                              # 🔐 Variáveis de ambiente

@@ -1,32 +1,10 @@
-const token = localStorage.getItem('token');
+const mongoose = require('mongoose');
 
-fetch('/api/followers/all-users', {
-  headers: { Authorization: `Bearer ${token}` }
-})
-  .then(res => res.json())
-  .then(users => {
-    const userList = document.getElementById('userList');
-    users.forEach(user => {
-      const li = document.createElement('li');
-      li.textContent = user.name;
+const FollowSchema = new mongoose.Schema({
+  follower: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  following: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+}, { timestamps: true });
 
-      const btn = document.createElement('button');
-      btn.textContent = user.isFollowing ? 'Seguindo' : 'Seguir';
-      btn.disabled = user.isFollowing;
+FollowSchema.index({ follower: 1, following: 1 }, { unique: true }); // evita seguir duplicado
 
-      btn.addEventListener('click', () => {
-        fetch(`/api/followers/follow/${user._id}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => res.json())
-        .then(() => {
-          btn.textContent = 'Seguindo';
-          btn.disabled = true;
-        });
-      });
-
-      li.appendChild(btn);
-      userList.appendChild(li);
-    });
-  });
+module.exports = mongoose.model('Follow', FollowSchema);
