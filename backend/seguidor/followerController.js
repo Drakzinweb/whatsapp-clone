@@ -1,5 +1,5 @@
 // seguidor/followerController.js
-const User = require('../login/User');
+const User = require('../routes/User');
 
 // Lista TODOS usuários (exceto o logado) com info se já é seguido
 exports.getAllUsers = async (req, res) => {
